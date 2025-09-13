@@ -64,8 +64,8 @@ export default function ModificadorForm({ modificador = null, onSave, onCancel, 
       newErrors.nombre = 'El nombre del modificador es requerido';
     }
 
-    if (formData.precio === '' || formData.precio < 0) {
-      newErrors.precio = 'El precio debe ser mayor o igual a 0';
+    if (formData.precio === '') {
+      newErrors.precio = 'El precio es requerido';
     }
 
     if (formData.subcategoriasIds.length === 0) {

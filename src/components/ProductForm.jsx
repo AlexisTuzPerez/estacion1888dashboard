@@ -10,6 +10,7 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
     imagenUrl: '',
     precio: '',
     subcategoriaId: '',
+    descripcion: '',
     sucursales: [],
     tamaños: [] // Array de { tamanoId, precio }
   });
@@ -38,6 +39,7 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
             imagenUrl: productoCompleto.imagenUrl || '',
             precio: productoCompleto.precio || '',
             subcategoriaId: productoCompleto.subcategoriaId || '',
+            descripcion: productoCompleto.descripcion || '',
             sucursales: productoCompleto.sucursales || [],
             tamaños: tamañosTransformados
           });
@@ -54,6 +56,7 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
             imagenUrl: product.imagenUrl || '',
             precio: product.precio || '',
             subcategoriaId: product.subcategoriaId || '',
+            descripcion: product.descripcion || '',
             sucursales: product.sucursales || [],
             tamaños: tamañosFallback
           });
@@ -68,9 +71,13 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    // Convertir nombre a mayúsculas
+    const processedValue = name === 'nombre' ? value.toUpperCase() : value;
+    
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : processedValue
     }));
 
     if (errors[name]) {
@@ -180,8 +187,6 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
     if (!validateForm()) {
       return;
     }
-
-    setIsSubmitting(true);
     
     try {
       const productData = {
@@ -190,23 +195,36 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
         precio: parseFloat(formData.precio),
         imagenUrl: formData.imagenUrl,
         subcategoriaId: parseInt(formData.subcategoriaId),
+        descripcion: formData.descripcion,
         tamaños: formData.tamaños.filter(t => t.precio > 0) // Solo incluir tamaños con precio > 0
       };
 
       await onSave(productData);
     } catch (error) {
       console.error('Error al guardar producto:', error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   const FormSkeleton = () => (
     <div className="space-y-6 animate-pulse">
+      {/* Skeleton para ID del producto (solo en modo edición) */}
+      {product && product.id && (
+        <div>
+          <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+          <div className="h-10 bg-gray-200 rounded-lg w-full"></div>
+        </div>
+      )}
+
       {/* Skeleton para nombre del producto */}
       <div>
         <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
         <div className="h-10 bg-gray-200 rounded-lg w-full"></div>
+      </div>
+
+      {/* Skeleton para descripción */}
+      <div>
+        <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+        <div className="h-20 bg-gray-200 rounded-lg w-full"></div>
       </div>
 
       {/* Skeleton para precio */}
@@ -275,6 +293,22 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* ID del producto (solo en modo edición) */}
+      {product && product.id && (
+        <div>
+          <label htmlFor="productId" className="block text-sm font-medium text-gray-700 mb-2">
+            ID del Producto
+          </label>
+          <input
+            type="text"
+            id="productId"
+            value={product.id}
+            readOnly
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+          />
+        </div>
+      )}
+
       {/* Nombre del producto */}
       <div>
         <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 mb-2">
@@ -286,13 +320,35 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
           name="nombre"
           value={formData.nombre}
           onChange={handleInputChange}
-          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E592F] focus:border-transparent ${
+          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E592F] focus:border-transparent uppercase ${
             errors.nombre ? 'border-red-500' : 'border-gray-300'
           }`}
-          placeholder="Ingrese el nombre del producto"
+          placeholder="INGRESE EL NOMBRE DEL PRODUCTO"
+          style={{ textTransform: 'uppercase' }}
         />
         {errors.nombre && (
           <p className="mt-1 text-sm text-red-600">{errors.nombre}</p>
+        )}
+      </div>
+
+      {/* Descripción del producto */}
+      <div>
+        <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700 mb-2">
+          Descripción
+        </label>
+        <textarea
+          id="descripcion"
+          name="descripcion"
+          value={formData.descripcion}
+          onChange={handleInputChange}
+          rows={3}
+          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E592F] focus:border-transparent resize-none ${
+            errors.descripcion ? 'border-red-500' : 'border-gray-300'
+          }`}
+          placeholder="Ingrese una descripción del producto (opcional)"
+        />
+        {errors.descripcion && (
+          <p className="mt-1 text-sm text-red-600">{errors.descripcion}</p>
         )}
       </div>
 
@@ -312,7 +368,7 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
             name="precio"
             value={formData.precio}
             onChange={handleInputChange}
-            step="0.01"
+            step="1"
             min="0"
             readOnly={formData.tamaños.filter(t => t.precio > 0).length > 1}
             className={`w-full pl-8 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E592F] focus:border-transparent ${
@@ -465,10 +521,10 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
                           type="number"
                           value={precio == '' ? '' : precio}
                           onChange={(e) => handleTamanoChange(tamano.id, e.target.value)}
-                          step="0.01"
+                          step="1"
                           min="0"
                           className="w-20 px-2 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E592F] focus:border-transparent transition-colors"
-                          placeholder="0.00"
+                          placeholder="0"
                         />
                       </div>
                     )}
@@ -522,10 +578,9 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
           </button>
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-white bg-[#0E592F] border border-transparent rounded-lg hover:bg-[#0B4A27] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E592F] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm font-medium text-white bg-[#0E592F] border border-transparent rounded-lg hover:bg-[#0B4A27] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E592F] transition-colors"
           >
-            {isSubmitting ? 'Guardando...' : (product ? 'Actualizar' : 'Crear')}
+            {product ? 'Actualizar' : 'Crear'}
           </button>
         </div>
       </div>

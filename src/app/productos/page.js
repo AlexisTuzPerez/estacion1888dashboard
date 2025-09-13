@@ -20,6 +20,7 @@ export default function ProductosPage() {
   const [productosPorSubcategoria, setProductosPorSubcategoria] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(new Set());
+  const [categoriesLoaded, setCategoriesLoaded] = useState(new Set());
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
   const [confirmationModal, setConfirmationModal] = useState({ 
     isOpen: false, 
@@ -37,29 +38,47 @@ export default function ProductosPage() {
       setLoading(true);
       const categorias = await getCategorias();
       setSubcategorias(categorias);
-      setLoading(false); // Mostrar categorías inmediatamente
       
-      categorias.forEach(async (categoria, index) => {
-        setTimeout(async () => {
-          setLoadingCategories(prev => new Set([...prev, categoria.id]));
+      // Inicializar todas las categorías como cargando
+      const initialLoadingSet = new Set(categorias.map(cat => cat.id));
+      setLoadingCategories(initialLoadingSet);
+      setCategoriesLoaded(new Set());
+      
+      // Cargar productos de todas las categorías de forma asíncrona e independiente
+      categorias.forEach(async (categoria) => {
+        try {
+          const productos = await getProductosBySubcategoria(categoria.id);
           
-          try {
-            const productos = await getProductosBySubcategoria(categoria.id);
-            setProductosPorSubcategoria(prev => ({
-              ...prev,
-              [categoria.id]: productos
-            }));
-          } catch (error) {
-            console.error(`Error al cargar productos de ${categoria.nombre}:`, error);
-          } finally {
-            setLoadingCategories(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(categoria.id);
-              return newSet;
-            });
-          }
-        }, index * 200); // 200ms entre cada categoría
+          // Actualizar productos para esta categoría específica
+          setProductosPorSubcategoria(prev => ({
+            ...prev,
+            [categoria.id]: productos
+          }));
+          
+          // Marcar esta categoría como cargada
+          setCategoriesLoaded(prev => new Set([...prev, categoria.id]));
+          
+        } catch (error) {
+          console.error(`Error al cargar productos de ${categoria.nombre}:`, error);
+          
+          // En caso de error, marcar como cargada con array vacío
+          setProductosPorSubcategoria(prev => ({
+            ...prev,
+            [categoria.id]: []
+          }));
+          setCategoriesLoaded(prev => new Set([...prev, categoria.id]));
+        } finally {
+          // Quitar el skeleton de esta categoría específica
+          setLoadingCategories(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(categoria.id);
+            return newSet;
+          });
+        }
       });
+      
+      // Ocultar el loading principal una vez que tenemos las categorías
+      setLoading(false);
       
     } catch (error) {
       console.error('Error al cargar categorías:', error);
@@ -117,14 +136,72 @@ export default function ProductosPage() {
       if (modalMode === 'edit' && selectedProduct?.id) {
         await updateProducto(selectedProduct.id, productData);
         showNotification('Producto actualizado exitosamente', 'success');
+        
+        // Cerrar modal primero
+        closeModal();
+        
+        // Actualizar solo la categoría específica en lugar de recargar todas
+        const subcategoriaId = productData.subcategoriaId;
+        console.log('Subcategoria ID del producto editado:', subcategoriaId);
+        
+        if (subcategoriaId) {
+          // Activar skeleton para mostrar carga
+          setLoadingCategories(prev => new Set([...prev, subcategoriaId]));
+          
+          // Pequeño delay para asegurar que el skeleton se muestre
+          await new Promise(resolve => setTimeout(resolve, 150));
+          
+          const productos = await getProductosBySubcategoria(subcategoriaId);
+          setProductosPorSubcategoria(prev => ({
+            ...prev,
+            [subcategoriaId]: productos
+          }));
+          
+          // Desactivar skeleton
+          setLoadingCategories(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(subcategoriaId);
+            return newSet;
+          });
+        } else {
+          console.log('No se encontró subcategoriaId, recargando todas las categorías');
+          fetchCategorias();
+        }
       } else {
         await postProducto(productData);
         showNotification('Producto creado exitosamente', 'success');
+        
+        // Cerrar modal primero
+        closeModal();
+        
+        // Actualizar solo la categoría específica en lugar de recargar todas
+        const subcategoriaId = productData.subcategoriaId;
+
+        
+        if (subcategoriaId) {
+          // Activar skeleton para mostrar carga
+          setLoadingCategories(prev => new Set([...prev, subcategoriaId]));
+          
+          // Pequeño delay para asegurar que el skeleton se muestre
+          await new Promise(resolve => setTimeout(resolve, 150));
+          
+          const productos = await getProductosBySubcategoria(subcategoriaId);
+          setProductosPorSubcategoria(prev => ({
+            ...prev,
+            [subcategoriaId]: productos
+          }));
+          
+          // Desactivar skeleton
+          setLoadingCategories(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(subcategoriaId);
+            return newSet;
+          });
+        } else {
+          console.log('No se encontró subcategoriaId, recargando todas las categorías');
+          fetchCategorias();
+        }
       }
-      
-      closeModal();
-      
-      fetchCategorias();
       
     } catch (error) {
       console.error('Error al guardar producto:', error);
@@ -149,9 +226,24 @@ export default function ProductosPage() {
       const result = await deleteProducto(productId);
       showNotification('Producto eliminado exitosamente', 'success');
       
+      // Obtener subcategoriaId antes de cerrar el modal
+      const subcategoriaId = selectedProduct?.subcategoriaId;
+      console.log('Subcategoria ID del producto eliminado:', subcategoriaId);
+      
       closeModal();
       
-      fetchCategorias();
+      // Actualizar solo la categoría específica en lugar de recargar todas
+      if (subcategoriaId) {
+        const productos = await getProductosBySubcategoria(subcategoriaId);
+        setProductosPorSubcategoria(prev => ({
+          ...prev,
+          [subcategoriaId]: productos
+        }));
+      } else {
+        // Si no tenemos subcategoriaId, recargar todas las categorías como fallback
+        console.log('No se encontró subcategoriaId, recargando todas las categorías');
+        fetchCategorias();
+      }
       
     } catch (error) {
       console.error('Error al eliminar producto:', error);
@@ -246,7 +338,7 @@ export default function ProductosPage() {
                     [...Array(4)].map((_, i) => (
                       <ProductSkeleton key={i} />
                     ))
-                  ) : productosPorSubcategoria[subcategoria.id]?.length > 0 ? (
+                  ) : categoriesLoaded.has(subcategoria.id) && productosPorSubcategoria[subcategoria.id]?.length > 0 ? (
                     productosPorSubcategoria[subcategoria.id].map((product) => (
                       <div key={product.id} className="flex-none w-48">
                         <div 
@@ -321,10 +413,15 @@ export default function ProductosPage() {
                         </div>
                       </div>
                     ))
-                  ) : (
+                  ) : categoriesLoaded.has(subcategoria.id) ? (
                     <div className="flex-none w-full text-center py-8">
                       <p className="text-gray-500">No hay productos en esta categoría</p>
                     </div>
+                  ) : (
+                    // Mostrar skeleton mientras no se ha cargado
+                    [...Array(4)].map((_, i) => (
+                      <ProductSkeleton key={i} />
+                    ))
                   )}
                 </div>
               </div>
@@ -332,7 +429,11 @@ export default function ProductosPage() {
               {/* Contador de productos */}
               <div className="mt-3 text-right">
                 <span className="text-sm text-gray-500">
-                  {productosPorSubcategoria[subcategoria.id]?.length || 0} productos
+                  {loadingCategories.has(subcategoria.id) ? (
+                    <span className="animate-pulse">Cargando...</span>
+                  ) : (
+                    `${productosPorSubcategoria[subcategoria.id]?.length || 0} productos`
+                  )}
                 </span>
               </div>
             </div>
