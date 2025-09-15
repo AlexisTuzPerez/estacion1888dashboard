@@ -92,3 +92,30 @@ export async function deleteProducto(productoId) {
         throw error;
     }
 }
+
+// TODO: Implementar endpoint en el backend para actualizar el orden de productos
+// Esta función está lista para cuando se implemente el endpoint /productos/reorder
+export async function updateProductoOrder(ordenData) {
+    try {
+        const response = await fetch(`${API_URL}/productos/reorder`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(ordenData.map(item => ({
+                id: item.id,
+                posicion: item.posicion
+            }))),
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al actualizar el orden de los productos');
+        }
+        
+        return response.json();
+    } catch (error) {
+        console.error('Error al actualizar el orden de productos:', error);
+        throw error;
+    }
+}

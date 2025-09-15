@@ -76,3 +76,30 @@ export async function deleteCategoria(id) {
         throw error;
     }
 }
+
+// TODO: Implementar endpoint en el backend para actualizar el orden de categorías
+// Esta función está lista para cuando se implemente el endpoint /subcategorias/reorder
+export async function updateCategoriaOrder(ordenData) {
+    try {
+        const response = await fetch(`${API_URL}/subcategorias/reorder`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(ordenData.map(item => ({
+                id: item.id,
+                posicion: item.posicion
+            }))),
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al actualizar el orden de las categorías');
+        }
+        
+        return response.json();
+    } catch (error) {
+        console.error('Error al actualizar el orden de categorías:', error);
+        throw error;
+    }
+}

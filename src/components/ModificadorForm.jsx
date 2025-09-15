@@ -1,10 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-export default function ModificadorForm({ modificador = null, onSave, onCancel, onDelete, subcategorias = [] }) {
+export default function ModificadorForm({ modificador = null, onSave, onCancel, onDelete, subcategorias = [], tiposModificador = [] }) {
   const [formData, setFormData] = useState({
     nombre: '',
     precio: '',
+    tipoModificadorId: '',
     subcategoriasIds: [],
     sucursales: []
   });
@@ -16,7 +17,8 @@ export default function ModificadorForm({ modificador = null, onSave, onCancel, 
     if (modificador) {
       setFormData({
         nombre: modificador.nombre || '',
-        precio: modificador.precio || '',
+        precio: modificador.precio !== undefined ? modificador.precio : '',
+        tipoModificadorId: modificador.tipoModificador ? modificador.tipoModificador.id : '',
         subcategoriasIds: modificador.subcategorias ? modificador.subcategorias.map(sub => sub.id) : [],
         sucursales: modificador.sucursales || []
       });
@@ -26,11 +28,9 @@ export default function ModificadorForm({ modificador = null, onSave, onCancel, 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
-    const processedValue = name === 'nombre' ? value.toUpperCase() : value;
-    
     setFormData(prev => ({
       ...prev,
-      [name]: processedValue
+      [name]: value
     }));
 
     if (errors[name]) {
@@ -68,6 +68,10 @@ export default function ModificadorForm({ modificador = null, onSave, onCancel, 
       newErrors.precio = 'El precio es requerido';
     }
 
+    if (!formData.tipoModificadorId) {
+      newErrors.tipoModificadorId = 'Debe seleccionar un tipo de modificador';
+    }
+
     if (formData.subcategoriasIds.length === 0) {
       newErrors.subcategoriasIds = 'Debe seleccionar al menos una subcategoría';
     }
@@ -88,6 +92,7 @@ export default function ModificadorForm({ modificador = null, onSave, onCancel, 
     try {
       const modificadorData = {
         nombre: formData.nombre,
+        tipoModificadorId: parseInt(formData.tipoModificadorId),
         subcategoriasIds: formData.subcategoriasIds,
         precio: parseFloat(formData.precio)
       };
@@ -113,11 +118,10 @@ export default function ModificadorForm({ modificador = null, onSave, onCancel, 
           name="nombre"
           value={formData.nombre}
           onChange={handleInputChange}
-          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E592F] focus:border-transparent uppercase ${
+          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E592F] focus:border-transparent ${
             errors.nombre ? 'border-red-500' : 'border-gray-300'
           }`}
-          placeholder="EXTRA QUESO, SIN CEBOLLA, etc."
-          style={{ textTransform: 'uppercase' }}
+          placeholder="Extra queso, sin cebolla, etc."
         />
         {errors.nombre && (
           <p className="mt-1 text-sm text-red-600">{errors.nombre}</p>
@@ -147,6 +151,32 @@ export default function ModificadorForm({ modificador = null, onSave, onCancel, 
         </div>
         {errors.precio && (
           <p className="mt-1 text-sm text-red-600">{errors.precio}</p>
+        )}
+      </div>
+
+      {/* Tipo de Modificador */}
+      <div>
+        <label htmlFor="tipoModificadorId" className="block text-sm font-medium text-gray-700 mb-2">
+          Tipo de Modificador *
+        </label>
+        <select
+          id="tipoModificadorId"
+          name="tipoModificadorId"
+          value={formData.tipoModificadorId}
+          onChange={handleInputChange}
+          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E592F] focus:border-transparent ${
+            errors.tipoModificadorId ? 'border-red-500' : 'border-gray-300'
+          }`}
+        >
+          <option value="">Seleccionar tipo de modificador</option>
+          {tiposModificador.map((tipo) => (
+            <option key={tipo.id} value={tipo.id}>
+              {tipo.nombre} {tipo.esUnico ? '(Único)' : '(Múltiple)'}
+            </option>
+          ))}
+        </select>
+        {errors.tipoModificadorId && (
+          <p className="mt-1 text-sm text-red-600">{errors.tipoModificadorId}</p>
         )}
       </div>
 

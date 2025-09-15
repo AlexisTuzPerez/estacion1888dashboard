@@ -1,8 +1,24 @@
 'use client';
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { getCategorias } from '../../actions/categoria';
-import { deleteProducto, getProductosBySubcategoria, postProducto, updateProducto } from '../../actions/productos';
+import { deleteProducto, getProductosBySubcategoria, postProducto, updateProducto, updateProductoOrder } from '../../actions/productos';
 import { getTamanos } from '../../actions/tamanos';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import DashboardLayout from '../../components/DashboardLayout';
@@ -28,6 +44,21 @@ export default function ProductosPage() {
     message: '', 
     onConfirm: null 
   });
+  
+  // Estados para el modal de posición
+  const [isPositionModalOpen, setIsPositionModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [categoryProducts, setCategoryProducts] = useState([]);
+  const [loadingModalProducts, setLoadingModalProducts] = useState(false);
+  const [loadingReorderProducts, setLoadingReorderProducts] = useState(false);
+  
+  // Sensores para drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
   
   useEffect(() => {
     checkTokenExpiry();
@@ -263,6 +294,138 @@ export default function ProductosPage() {
     setConfirmationModal({ isOpen: false, title: '', message: '', onConfirm: null });
   };
 
+  // Funciones para el modal de posición
+  const openPositionModal = async (category) => {
+    try {
+      setSelectedCategory(category);
+      setIsPositionModalOpen(true);
+      setLoadingModalProducts(true);
+      
+      const productos = await getProductosBySubcategoria(category.id);
+      setCategoryProducts(productos);
+      setLoadingModalProducts(false);
+    } catch (error) {
+      console.error('Error al cargar productos para posición:', error);
+      showNotification('Error al cargar productos', 'error');
+      setLoadingModalProducts(false);
+    }
+  };
+
+  const closePositionModal = () => {
+    setIsPositionModalOpen(false);
+    setSelectedCategory(null);
+    setCategoryProducts([]);
+    setLoadingModalProducts(false);
+  };
+
+  const handleProductDragEnd = async (event) => {
+    const { active, over } = event;
+
+    if (active.id !== over.id) {
+      const oldIndex = categoryProducts.findIndex((product) => product.id === active.id);
+      const newIndex = categoryProducts.findIndex((product) => product.id === over.id);
+
+      const newProducts = arrayMove(categoryProducts, oldIndex, newIndex);
+      setCategoryProducts(newProducts);
+
+      // Actualizar el orden en el backend
+      setLoadingReorderProducts(true);
+      try {
+        const newOrder = newProducts.map((product, index) => ({
+          id: product.id,
+          posicion: index + 1
+        }));
+        
+        await updateProductoOrder(newOrder);
+        showNotification('Orden de productos actualizado correctamente', 'success');
+      } catch (error) {
+        console.error('Error al actualizar orden en el servidor:', error);
+        showNotification('Error al actualizar el orden en el servidor', 'error');
+        // Revertir cambios locales en caso de error
+        setCategoryProducts(categoryProducts);
+      } finally {
+        setLoadingReorderProducts(false);
+      }
+      
+      // Log para desarrollo - mostrar el nuevo orden
+      console.log('Nuevo orden de productos:', newProducts.map((product, index) => ({
+        id: product.id,
+        nombre: product.nombre,
+        posicion: index + 1
+      })));
+    }
+  };
+
+  // Componente SortableItem para productos
+  const SortableItem = ({ product, loadingReorder }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+    } = useSortable({ id: product.id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+
+    return (
+      <tr ref={setNodeRef} style={style} className="border-b border-gray-50 hover:bg-gray-50">
+        <td className="px-6 py-4 text-center">
+          <button
+            {...attributes}
+            {...listeners}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-grab active:cursor-grabbing"
+            title="Arrastrar para reordenar"
+            disabled={loadingReorder}
+          >
+            {loadingReorder ? (
+              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+        </td>
+        <td className="px-6 py-4">
+          <div className="flex items-center">
+            {product.imagenUrl ? (
+              <div className="flex-shrink-0 h-10 w-10">
+                <Image
+                  className="h-10 w-10 rounded-lg object-cover"
+                  src={product.imagenUrl}
+                  alt={product.nombre}
+                  width={40}
+                  height={40}
+                />
+              </div>
+            ) : (
+              <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                <Image
+                  src="/Logo.png"
+                  alt="Logo"
+                  width={20}
+                  height={20}
+                  className="opacity-40"
+                />
+              </div>
+            )}
+            <div className="ml-4">
+              <div className="text-sm font-medium text-gray-900">{product.nombre}</div>
+              <div className="text-sm text-gray-500">${product.precio}</div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   const ProductSkeleton = () => (
     <div className="flex-none w-48">
       <div className="overflow-hidden rounded-2xl bg-white border border-gray-100">
@@ -327,8 +490,18 @@ export default function ProductosPage() {
             <div key={subcategoria.id} className="bg-white rounded-xl border border-gray-100 p-6">
               {/* Título de la subcategoría */}
               <div className="mb-4">
-                <h2 className="text-xl font-medium text-gray-900">{subcategoria.nombre}</h2>
-                <div className="mt-2 h-0.5 w-12 bg-[#0E592F]"></div>
+                <div className="flex items-center space-x-3">
+                  <h2 className="text-xl font-medium text-gray-900">{subcategoria.nombre}</h2>
+                  <button
+                    onClick={() => openPositionModal(subcategoria)}
+                    className="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm flex items-center space-x-1"
+                  >
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <span>Posición</span>
+                  </button>
+                </div>
               </div>
 
               {/* Productos con scroll horizontal */}
@@ -502,6 +675,86 @@ export default function ProductosPage() {
         cancelText="Cancelar"
         type="danger"
       />
+
+      {/* Modal de posición de productos */}
+      <Modal 
+        isOpen={isPositionModalOpen} 
+        onClose={closePositionModal}
+        title={`Posición de productos - ${selectedCategory?.nombre || ''}`}
+      >
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">
+                  Arrastra los productos para reordenarlos
+                </h3>
+                <div className="mt-2 text-sm text-blue-700">
+                  <p>Usa el ícono de tres líneas para arrastrar y soltar los productos en el orden deseado.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-100">
+            <div className="overflow-x-auto">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleProductDragEnd}
+              >
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="px-6 py-4 text-center text-sm font-medium text-gray-600 w-16">
+                        Posición
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
+                        Producto
+                      </th>
+                    </tr>
+                  </thead>
+                  <SortableContext items={categoryProducts.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                    <tbody>
+                      {loadingModalProducts ? (
+                        [...Array(5)].map((_, index) => (
+                          <tr key={index} className="border-b border-gray-50">
+                            <td className="px-6 py-4 text-center">
+                              <div className="h-4 bg-gray-200 rounded animate-pulse w-5"></div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="h-4 bg-gray-200 rounded animate-pulse w-48"></div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        categoryProducts.map((product, index) => (
+                          <SortableItem key={product.id} product={product} loadingReorder={loadingReorderProducts} />
+                        ))
+                      )}
+                    </tbody>
+                  </SortableContext>
+                </table>
+              </DndContext>
+            </div>
+          </div>
+
+          {!loadingModalProducts && categoryProducts.length === 0 && (
+            <div className="text-center py-8">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No hay productos</h3>
+              <p className="mt-1 text-sm text-gray-500">Esta categoría no tiene productos para reordenar.</p>
+            </div>
+          )}
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 }

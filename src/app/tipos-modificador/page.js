@@ -1,30 +1,30 @@
 'use client';
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
+    closestCenter,
+    DndContext,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useCallback, useEffect, useState } from 'react';
-import { deleteCategoria, getCategorias, postCategoria, updateCategoria, updateCategoriaOrder } from '../../actions/categoria';
-import CategoriaForm from '../../components/CategoriaForm';
+import { deleteTipoModificador, getTiposModificador, postTipoModificador, updateTipoModificador, updateTipoModificadorOrder } from '../../actions/tiposModificador';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import DashboardLayout from '../../components/DashboardLayout';
 import Modal from '../../components/Modal';
+import TipoModificadorForm from '../../components/TipoModificadorForm';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Componente para las filas sortables de la tabla
-function SortableItem({ categoria, index, onEdit, totalItems, loadingReorder }) {
+function SortableItem({ tipoModificador, index, onEdit, totalItems, loadingReorder }) {
   const {
     attributes,
     listeners,
@@ -32,7 +32,7 @@ function SortableItem({ categoria, index, onEdit, totalItems, loadingReorder }) 
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: categoria.id });
+  } = useSortable({ id: tipoModificador.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -47,7 +47,7 @@ function SortableItem({ categoria, index, onEdit, totalItems, loadingReorder }) 
       className={`hover:bg-green-50 transition-colors cursor-pointer ${
         index !== totalItems - 1 ? 'border-b border-gray-50' : ''
       } ${isDragging ? 'z-50' : ''}`}
-      onClick={() => onEdit(categoria)}
+      onClick={() => onEdit(tipoModificador)}
     >
       {/* Columna Posición con handle de drag and drop */}
       <td className="px-6 py-4">
@@ -73,13 +73,23 @@ function SortableItem({ categoria, index, onEdit, totalItems, loadingReorder }) 
       </td>
       {/* ID */}
       <td className="px-6 py-4 text-sm text-gray-500">
-        {categoria.id}
+        {tipoModificador.id}
       </td>
       {/* Nombre */}
       <td className="px-6 py-4">
         <div className="text-sm font-medium text-gray-900">
-          {categoria.nombre}
+          {tipoModificador.nombre}
         </div>
+      </td>
+      {/* Es Único */}
+      <td className="px-6 py-4">
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+          tipoModificador.esUnico 
+            ? 'bg-green-100 text-green-800' 
+            : 'bg-gray-100 text-gray-800'
+        }`}>
+          {tipoModificador.esUnico ? 'Sí' : 'No'}
+        </span>
       </td>
       {/* Acciones */}
       <td className="px-6 py-4">
@@ -87,7 +97,7 @@ function SortableItem({ categoria, index, onEdit, totalItems, loadingReorder }) 
           <button 
             onClick={(e) => {
               e.stopPropagation();
-              onEdit(categoria);
+              onEdit(tipoModificador);
             }}
             className="text-gray-400 hover:text-[#0E592F] transition-colors"
           >
@@ -101,11 +111,11 @@ function SortableItem({ categoria, index, onEdit, totalItems, loadingReorder }) 
   );
 }
 
-export default function CategoriaPage() {
+export default function TiposModificadorPage() {
   const { checkTokenExpiry } = useAuth();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCategoria, setSelectedCategoria] = useState(null);
+  const [selectedTipoModificador, setSelectedTipoModificador] = useState(null);
   const [modalMode, setModalMode] = useState('view'); // 'view', 'create', 'edit'
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
   const [confirmationModal, setConfirmationModal] = useState({ 
@@ -114,7 +124,7 @@ export default function CategoriaPage() {
     message: '', 
     onConfirm: null 
   });
-  const [categorias, setCategorias] = useState([]);
+  const [tiposModificador, setTiposModificador] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingReorder, setLoadingReorder] = useState(false);
 
@@ -137,11 +147,11 @@ export default function CategoriaPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const categoriasData = await getCategorias();
-      setCategorias(categoriasData);
+      const tiposModificadorData = await getTiposModificador();
+      setTiposModificador(tiposModificadorData);
     } catch (error) {
-      console.error('Error al cargar categorías:', error);
-      showNotification('Error al cargar las categorías', 'error');
+      console.error('Error al cargar tipos de modificador:', error);
+      showNotification('Error al cargar los tipos de modificador', 'error');
     } finally {
       setLoading(false);
     }
@@ -151,24 +161,24 @@ export default function CategoriaPage() {
     fetchData();
   }, [fetchData]);
 
-  const openCategoriaModal = (categoria, mode = 'view') => {
-    setSelectedCategoria(categoria);
+  const openTipoModificadorModal = (tipoModificador, mode = 'view') => {
+    setSelectedTipoModificador(tipoModificador);
     setModalMode(mode);
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setSelectedCategoria(null);
+    setSelectedTipoModificador(null);
     setModalMode('view');
   };
 
-  const handleCreateCategoria = () => {
-    openCategoriaModal(null, 'create');
+  const handleCreateTipoModificador = () => {
+    openTipoModificadorModal(null, 'create');
   };
 
-  const handleEditCategoria = (categoria) => {
-    openCategoriaModal(categoria, 'edit');
+  const handleEditTipoModificador = (tipoModificador) => {
+    openTipoModificadorModal(tipoModificador, 'edit');
   };
 
   const showNotification = (message, type = 'success') => {
@@ -178,50 +188,48 @@ export default function CategoriaPage() {
     }, 3000);
   };
 
-  const handleSaveCategoria = async (categoriaData) => {
+  const handleSaveTipoModificador = async (tipoModificadorData) => {
     try {
-      if (modalMode === 'edit' && selectedCategoria?.id) {
-        await updateCategoria(selectedCategoria.id, categoriaData);
-        showNotification('Categoría actualizada exitosamente', 'success');
+      if (modalMode === 'edit' && selectedTipoModificador?.id) {
+        await updateTipoModificador(selectedTipoModificador.id, tipoModificadorData);
+        showNotification('Tipo de modificador actualizado exitosamente', 'success');
       } else {
-        await postCategoria(categoriaData);
-        showNotification('Categoría creada exitosamente', 'success');
+        await postTipoModificador(tipoModificadorData);
+        showNotification('Tipo de modificador creado exitosamente', 'success');
       }
       
       closeModal();
-      
       fetchData();
       
     } catch (error) {
-      console.error('Error al guardar categoría:', error);
-      const errorMessage = error.message || 'Error al guardar la categoría';
+      console.error('Error al guardar tipo de modificador:', error);
+      const errorMessage = error.message || 'Error al guardar el tipo de modificador';
       showNotification(errorMessage, 'error');
       throw error;
     }
   };
 
-  const handleDeleteCategoria = (categoriaId) => {
-    const categoria = selectedCategoria;
+  const handleDeleteTipoModificador = (tipoModificadorId) => {
+    const tipoModificador = selectedTipoModificador;
     setConfirmationModal({
       isOpen: true,
-      title: 'Eliminar Categoría',
-      message: `¿Estás seguro de que quieres eliminar la categoría "${categoria?.nombre}"? Esta acción no se puede deshacer.`,
-      onConfirm: () => executeDeleteCategoria(categoriaId)
+      title: 'Eliminar Tipo de Modificador',
+      message: `¿Estás seguro de que quieres eliminar el tipo de modificador "${tipoModificador?.nombre}"? Esta acción no se puede deshacer.`,
+      onConfirm: () => executeDeleteTipoModificador(tipoModificadorId)
     });
   };
 
-  const executeDeleteCategoria = async (categoriaId) => {
+  const executeDeleteTipoModificador = async (tipoModificadorId) => {
     try {
-      const result = await deleteCategoria(categoriaId);
-      showNotification('Categoría eliminada exitosamente', 'success');
+      const result = await deleteTipoModificador(tipoModificadorId);
+      showNotification('Tipo de modificador eliminado exitosamente', 'success');
       
       closeModal();
-      
       fetchData();
       
     } catch (error) {
-      console.error('Error al eliminar categoría:', error);
-      let errorMessage = 'Error al eliminar la categoría';
+      console.error('Error al eliminar tipo de modificador:', error);
+      let errorMessage = 'Error al eliminar el tipo de modificador';
       
       if (error.message) {
         errorMessage = error.message;
@@ -242,35 +250,35 @@ export default function CategoriaPage() {
     const { active, over } = event;
 
     if (active.id !== over?.id) {
-      const oldIndex = categorias.findIndex((categoria) => categoria.id === active.id);
-      const newIndex = categorias.findIndex((categoria) => categoria.id === over.id);
+      const oldIndex = tiposModificador.findIndex((tipoModificador) => tipoModificador.id === active.id);
+      const newIndex = tiposModificador.findIndex((tipoModificador) => tipoModificador.id === over.id);
 
-      const newCategorias = arrayMove(categorias, oldIndex, newIndex);
-      setCategorias(newCategorias);
+      const newTiposModificador = arrayMove(tiposModificador, oldIndex, newIndex);
+      setTiposModificador(newTiposModificador);
 
       // Actualizar el orden en el backend
       setLoadingReorder(true);
       try {
-        const newOrder = newCategorias.map((categoria, index) => ({
-          id: categoria.id,
+        const newOrder = newTiposModificador.map((tipoModificador, index) => ({
+          id: tipoModificador.id,
           posicion: index + 1
         }));
         
-        await updateCategoriaOrder(newOrder);
-        showNotification('Orden de categorías actualizado correctamente', 'success');
+        await updateTipoModificadorOrder(newOrder);
+        showNotification('Orden de tipos modificador actualizado correctamente', 'success');
       } catch (error) {
         console.error('Error al actualizar orden en el servidor:', error);
         showNotification('Error al actualizar el orden en el servidor', 'error');
         // Revertir cambios locales en caso de error
-        setCategorias(categorias);
+        setTiposModificador(tiposModificador);
       } finally {
         setLoadingReorder(false);
       }
       
       // Log para desarrollo - mostrar el nuevo orden
-      console.log('Nuevo orden de categorías:', newCategorias.map((categoria, index) => ({
-        id: categoria.id,
-        nombre: categoria.nombre,
+      console.log('Nuevo orden de tipos modificador:', newTiposModificador.map((tipoModificador, index) => ({
+        id: tipoModificador.id,
+        nombre: tipoModificador.nombre,
         posicion: index + 1
       })));
     }
@@ -283,10 +291,10 @@ export default function CategoriaPage() {
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-light text-gray-900">Categorías</h1>
+              <h1 className="text-3xl font-light text-gray-900">Tipos de Modificador</h1>
             </div>
             <button 
-              onClick={handleCreateCategoria}
+              onClick={handleCreateTipoModificador}
               className="bg-[#0E592F] text-white px-3 mr-1 py-3 rounded-lg hover:bg-[#0B4A27] transition-colors font-medium flex items-center"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -316,13 +324,16 @@ export default function CategoriaPage() {
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
                       Nombre
                     </th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
+                      Es Único
+                    </th>
                     <th className="px-6 py-4 text-right text-sm font-medium text-gray-600">
                       Acciones
                     </th>
                   </tr>
                 </thead>
                 <SortableContext
-                  items={categorias.map(categoria => categoria.id)}
+                  items={tiposModificador.map(tipoModificador => tipoModificador.id)}
                   strategy={verticalListSortingStrategy}
                 >
                   <tbody>
@@ -338,19 +349,22 @@ export default function CategoriaPage() {
                           <td className="px-6 py-4">
                             <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
                           </td>
+                          <td className="px-6 py-4">
+                            <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                          </td>
                           <td className="px-6 py-4 text-right">
                             <div className="h-4 bg-gray-200 rounded animate-pulse w-5"></div>
                           </td>
                         </tr>
                       ))
                     ) : (
-                      categorias.map((categoria, index) => (
+                      tiposModificador.map((tipoModificador, index) => (
                         <SortableItem
-                          key={categoria.id}
-                          categoria={categoria}
+                          key={tipoModificador.id}
+                          tipoModificador={tipoModificador}
                           index={index}
-                          onEdit={handleEditCategoria}
-                          totalItems={categorias.length}
+                          onEdit={handleEditTipoModificador}
+                          totalItems={tiposModificador.length}
                           loadingReorder={loadingReorder}
                         />
                       ))
@@ -365,7 +379,7 @@ export default function CategoriaPage() {
         {/* Footer minimalista */}
         <div className="mt-4 text-center">
           <p className="text-sm text-gray-500">
-            {categorias.length} categorías
+            {tiposModificador.length} tipos de modificador
           </p>
         </div>
       </div>
@@ -375,22 +389,22 @@ export default function CategoriaPage() {
         isOpen={isModalOpen} 
         onClose={closeModal}
         title={
-          modalMode === 'create' ? 'Crear Nueva Categoría' :
-          modalMode === 'edit' ? 'Editar Categoría' :
-          'Detalles de la Categoría'
+          modalMode === 'create' ? 'Crear Nuevo Tipo de Modificador' :
+          modalMode === 'edit' ? 'Editar Tipo de Modificador' :
+          'Detalles del Tipo de Modificador'
         }
       >
         {modalMode === 'create' || modalMode === 'edit' ? (
-          <CategoriaForm
-            categoria={selectedCategoria}
-            onSave={handleSaveCategoria}
+          <TipoModificadorForm
+            tipoModificador={selectedTipoModificador}
+            onSave={handleSaveTipoModificador}
             onCancel={closeModal}
-            onDelete={handleDeleteCategoria}
+            onDelete={handleDeleteTipoModificador}
           />
         ) : (
           /* Vista de solo lectura - puedes implementar esto más tarde */
           <div className="text-center py-8">
-            <p className="text-gray-500">Vista de detalles de la categoría (por implementar)</p>
+            <p className="text-gray-500">Vista de detalles del tipo de modificador (por implementar)</p>
           </div>
         )}
       </Modal>

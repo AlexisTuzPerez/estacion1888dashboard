@@ -80,3 +80,30 @@ export async function deleteMesa(id) {
         throw error;
     }
 }
+
+// TODO: Implementar endpoint en el backend para actualizar el orden de mesas
+// Esta función está lista para cuando se implemente el endpoint /mesas/reorder
+export async function updateMesaOrder(ordenData) {
+    try {
+        const response = await fetch(`${API_URL}/mesas/reorder`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(ordenData.map(item => ({
+                id: item.id,
+                posicion: item.posicion
+            }))),
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al actualizar el orden de las mesas');
+        }
+        
+        return response.json();
+    } catch (error) {
+        console.error('Error al actualizar el orden de mesas:', error);
+        throw error;
+    }
+}

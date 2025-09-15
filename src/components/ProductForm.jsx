@@ -37,7 +37,7 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
             nombre: productoCompleto.nombre || '',
             activo: productoCompleto.activo !== undefined ? productoCompleto.activo : true,
             imagenUrl: productoCompleto.imagenUrl || '',
-            precio: productoCompleto.precio || '',
+            precio: productoCompleto.precio !== undefined ? productoCompleto.precio : '',
             subcategoriaId: productoCompleto.subcategoriaId || '',
             descripcion: productoCompleto.descripcion || '',
             sucursales: productoCompleto.sucursales || [],
@@ -54,7 +54,7 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
             nombre: product.nombre || '',
             activo: product.activo !== undefined ? product.activo : true,
             imagenUrl: product.imagenUrl || '',
-            precio: product.precio || '',
+            precio: product.precio !== undefined ? product.precio : '',
             subcategoriaId: product.subcategoriaId || '',
             descripcion: product.descripcion || '',
             sucursales: product.sucursales || [],
@@ -72,12 +72,9 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    // Convertir nombre a mayúsculas
-    const processedValue = name === 'nombre' ? value.toUpperCase() : value;
-    
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : processedValue
+      [name]: type === 'checkbox' ? checked : value
     }));
 
     if (errors[name]) {
@@ -145,8 +142,10 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
       newErrors.nombre = 'El nombre del producto es requerido';
     }
 
-    if (!formData.precio || formData.precio <= 0) {
-      newErrors.precio = 'El precio debe ser mayor a 0';
+    if (formData.precio === '' || formData.precio === null || formData.precio === undefined) {
+      newErrors.precio = 'El precio es requerido';
+    } else if (formData.precio < 0) {
+      newErrors.precio = 'El precio no puede ser negativo';
     }
 
     if (!formData.subcategoriaId) {
@@ -320,11 +319,10 @@ export default function ProductForm({ product = null, onSave, onCancel, onDelete
           name="nombre"
           value={formData.nombre}
           onChange={handleInputChange}
-          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E592F] focus:border-transparent uppercase ${
+          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E592F] focus:border-transparent ${
             errors.nombre ? 'border-red-500' : 'border-gray-300'
           }`}
-          placeholder="INGRESE EL NOMBRE DEL PRODUCTO"
-          style={{ textTransform: 'uppercase' }}
+          placeholder="Ingrese el nombre del producto"
         />
         {errors.nombre && (
           <p className="mt-1 text-sm text-red-600">{errors.nombre}</p>

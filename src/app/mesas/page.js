@@ -1,11 +1,105 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { deleteMesa, getMesas, postMesa, updateMesa } from '../../actions/mesas';
+import {
+    closestCenter,
+    DndContext,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useCallback, useEffect, useState } from 'react';
+import { deleteMesa, getMesas, postMesa, updateMesa, updateMesaOrder } from '../../actions/mesas';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import DashboardLayout from '../../components/DashboardLayout';
 import MesaForm from '../../components/MesaForm';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../contexts/AuthContext';
+
+// Componente para las filas sortables de la tabla
+function SortableItem({ mesa, index, onEdit, totalItems, loadingReorder }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: mesa.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr 
+      ref={setNodeRef}
+      style={style}
+      className={`hover:bg-green-50 transition-colors cursor-pointer ${
+        index !== totalItems - 1 ? 'border-b border-gray-50' : ''
+      } ${isDragging ? 'z-50' : ''}`}
+      onClick={() => onEdit(mesa)}
+    >
+      {/* Columna Posición con handle de drag and drop */}
+      <td className="px-6 py-4">
+        <button
+          {...attributes}
+          {...listeners}
+          className="text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing p-1"
+          onClick={(e) => e.stopPropagation()}
+          title="Arrastrar para cambiar posición"
+          disabled={loadingReorder}
+        >
+          {loadingReorder ? (
+            <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : (
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          )}
+        </button>
+      </td>
+      {/* ID */}
+      <td className="px-6 py-4 text-sm text-gray-500">
+        {mesa.id}
+      </td>
+      {/* Número */}
+      <td className="px-6 py-4">
+        <div className="text-sm font-medium text-gray-900">
+          {mesa.numero}
+        </div>
+      </td>
+      {/* Acciones */}
+      <td className="px-6 py-4">
+        <div className="flex justify-end">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(mesa);
+            }}
+            className="text-gray-400 hover:text-[#0E592F] transition-colors"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 export default function MesasPage() {
   const { checkTokenExpiry } = useAuth();
@@ -27,12 +121,25 @@ export default function MesasPage() {
     { id: 3, nombre: "Sucursal Sur" }
   ]);
   const [loading, setLoading] = useState(true);
+  const [loadingReorder, setLoadingReorder] = useState(false);
+
+  // Configuración de sensores para drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     checkTokenExpiry();
   }, [checkTokenExpiry]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const mesasData = await getMesas();
@@ -43,11 +150,11 @@ export default function MesasPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const openMesaModal = (mesa, mode = 'view') => {
     setSelectedMesa(mesa);
@@ -135,6 +242,45 @@ export default function MesasPage() {
     setConfirmationModal({ isOpen: false, title: '', message: '', onConfirm: null });
   };
 
+  // Función para manejar el reordenamiento por drag and drop
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = mesas.findIndex((mesa) => mesa.id === active.id);
+      const newIndex = mesas.findIndex((mesa) => mesa.id === over.id);
+
+      const newMesas = arrayMove(mesas, oldIndex, newIndex);
+      setMesas(newMesas);
+
+      // Actualizar el orden en el backend
+      setLoadingReorder(true);
+      try {
+        const newOrder = newMesas.map((mesa, index) => ({
+          id: mesa.id,
+          posicion: index + 1
+        }));
+        
+        await updateMesaOrder(newOrder);
+        showNotification('Orden de mesas actualizado correctamente', 'success');
+      } catch (error) {
+        console.error('Error al actualizar orden en el servidor:', error);
+        showNotification('Error al actualizar el orden en el servidor', 'error');
+        // Revertir cambios locales en caso de error
+        setMesas(mesas);
+      } finally {
+        setLoadingReorder(false);
+      }
+      
+      // Log para desarrollo - mostrar el nuevo orden
+      console.log('Nuevo orden de mesas:', newMesas.map((mesa, index) => ({
+        id: mesa.id,
+        numero: mesa.numero,
+        posicion: index + 1
+      })));
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto mt-8 px-4">
@@ -155,75 +301,69 @@ export default function MesasPage() {
           </div>
         </div>
 
-        {/* Tabla minimalista */}
+        {/* Tabla minimalista con drag and drop */}
         <div className="bg-white rounded-xl border border-gray-100">
           <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
-                    ID
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
-                    Número
-                  </th>
-                  <th className="px-6 py-4 text-right text-sm font-medium text-gray-600">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  [...Array(5)].map((_, index) => (
-                    <tr key={index} className="border-b border-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded animate-pulse w-8"></div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="h-4 bg-gray-200 rounded animate-pulse w-8"></div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  mesas.map((mesa, index) => (
-                  <tr 
-                    key={mesa.id} 
-                    className={`hover:bg-green-50 transition-colors cursor-pointer ${
-                      index !== mesas.length - 1 ? 'border-b border-gray-50' : ''
-                    }`}
-                    onClick={() => handleEditMesa(mesa)}
-                  >
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {mesa.id}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {mesa.numero}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end space-x-3">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditMesa(mesa);
-                          }}
-                          className="text-gray-400 hover:text-[#0E592F] transition-colors"
-                        >
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="px-6 py-4 text-center text-sm font-medium text-gray-600 w-16">
+                      Posición
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
+                      ID
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
+                      Número
+                    </th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-600">
+                      Acciones
+                    </th>
                   </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <SortableContext
+                  items={mesas.map(mesa => mesa.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <tbody>
+                    {loading ? (
+                      [...Array(5)].map((_, index) => (
+                        <tr key={index} className="border-b border-gray-50">
+                          <td className="px-6 py-4 text-center">
+                            <div className="h-4 bg-gray-200 rounded animate-pulse w-5"></div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="h-4 bg-gray-200 rounded animate-pulse w-8"></div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="h-4 bg-gray-200 rounded animate-pulse w-5"></div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      mesas.map((mesa, index) => (
+                        <SortableItem
+                          key={mesa.id}
+                          mesa={mesa}
+                          index={index}
+                          onEdit={handleEditMesa}
+                          totalItems={mesas.length}
+                          loadingReorder={loadingReorder}
+                        />
+                      ))
+                    )}
+                  </tbody>
+                </SortableContext>
+              </table>
+            </DndContext>
           </div>
         </div>
 
