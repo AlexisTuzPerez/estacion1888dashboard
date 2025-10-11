@@ -1,18 +1,18 @@
 'use client';
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors
+    closestCenter,
+    DndContext,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors
 } from '@dnd-kit/core';
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import Image from 'next/image';
@@ -337,7 +337,32 @@ export default function ProductosPage() {
         }));
         
         await updateProductoOrder(newOrder);
+        
+        // Mostrar notificación de éxito
         showNotification('Orden de productos actualizado correctamente', 'success');
+        
+        // Recargar la categoría específica después del éxito
+        if (selectedCategory?.id) {
+          // Activar skeleton para mostrar carga
+          setLoadingCategories(prev => new Set([...prev, selectedCategory.id]));
+          
+          // Pequeño delay para asegurar que el skeleton se muestre
+          await new Promise(resolve => setTimeout(resolve, 150));
+          
+          const productos = await getProductosBySubcategoria(selectedCategory.id);
+          setProductosPorSubcategoria(prev => ({
+            ...prev,
+            [selectedCategory.id]: productos
+          }));
+          
+          // Desactivar skeleton
+          setLoadingCategories(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(selectedCategory.id);
+            return newSet;
+          });
+        }
+        
       } catch (error) {
         console.error('Error al actualizar orden en el servidor:', error);
         showNotification('Error al actualizar el orden en el servidor', 'error');
@@ -644,7 +669,7 @@ export default function ProductosPage() {
 
       {/* Notification */}
       {notification.show && (
-        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+        <div className={`fixed top-4 right-4 z-[9999] px-6 py-3 rounded-lg shadow-lg transition-all duration-300 ${
           notification.type === 'success' 
             ? 'bg-green-600 text-white' 
             : 'bg-red-600 text-white'
