@@ -12,13 +12,19 @@ export async function login(email, password) {
         });
         const responseText = await response.text();
         if (!response.ok) {
-            return { error: `Error al iniciar sesión: ${response.status}` };
+            return { error: `Error al iniciar sesión` };
         }
+        let userInfo;
         try {
-            return JSON.parse(responseText);
+            userInfo = JSON.parse(responseText);
         } catch {
             return { message: responseText, success: true, status: response.status };
         }
+        // Verificación de usuario permitido
+        if (!userInfo || userInfo.id !== 152) {
+            return { error: 'Error al iniciar sesión' };
+        }
+        return userInfo;
     } catch (error) {
         return { error: 'Error de conexión' };
     }
