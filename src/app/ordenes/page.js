@@ -1,9 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
+import Modal from '../../components/Modal';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function OrdenesPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedOrden, setSelectedOrden] = useState(null);
   const { checkTokenExpiry } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [ordenes, setOrdenes] = useState([]);
@@ -301,7 +304,7 @@ export default function OrdenesPage() {
 
   // Componente para la carta de orden
   const OrdenCard = ({ orden }) => (
-    <div className="flex-shrink-0 w-80 bg-white rounded-xl border border-gray-100 hover:shadow-md transition-shadow p-4">
+    <div className="flex-shrink-0 w-80 bg-white rounded-xl border border-gray-100 hover:shadow-md transition-shadow p-4 cursor-pointer" onClick={() => { setSelectedOrden(orden); setIsModalOpen(true); }}>
       <div className="space-y-3">
         {/* Header con ID y fecha */}
         <div className="flex justify-between items-center">
@@ -314,13 +317,10 @@ export default function OrdenesPage() {
             <span>{orden.fecha.split(' ')[1]}</span>
           </div>
         </div>
-        
         {/* Usuario */}
         <div className="text-lg font-medium text-gray-800">{orden.usuario}</div>
-        
         {/* Fecha completa */}
         <div className="text-sm text-gray-600">{orden.fecha.split(' ')[0]}</div>
-        
         {/* Detalles */}
         <div className="space-y-1 text-sm text-gray-600">
           <div className="flex justify-between">
@@ -332,7 +332,6 @@ export default function OrdenesPage() {
             <span className="font-medium">#{orden.mesa}</span>
           </div>
         </div>
-        
         {/* Total */}
         <div className="pt-2 border-t border-gray-100">
           <div className="flex justify-between items-center">
@@ -340,36 +339,34 @@ export default function OrdenesPage() {
             <span className="text-lg font-bold text-gray-900">${orden.total.toFixed(2)}</span>
           </div>
         </div>
-        
         {/* Botones de acción - para órdenes pendientes */}
         {orden.status === 'pendiente' && (
-          <div className="flex space-x-4 pt-4">
+          <div className="flex items-center space-x-4 pt-4">
             <button
-              onClick={() => handleAceptarOrden(orden.id)}
-              className="flex-1 bg-green-600 bg-opacity-80 text-white px-6 py-4 rounded-xl hover:bg-green-600 hover:bg-opacity-90 transition-all text-lg font-bold"
+              onClick={(e) => { e.stopPropagation(); handleAceptarOrden(orden.id); }}
+              className="flex-1 h-16 bg-green-600 bg-opacity-80 text-white px-6 py-4 rounded-xl hover:bg-green-600 hover:bg-opacity-90 transition-all text-lg font-bold"
             >
               Aceptar
             </button>
             <button
-              onClick={() => handleRechazarOrden(orden.id)}
-              className="flex-1 bg-red-600 bg-opacity-80 text-white px-6 py-4 rounded-xl hover:bg-red-600 hover:bg-opacity-90 transition-all text-lg font-bold"
+              onClick={(e) => { e.stopPropagation(); handleRechazarOrden(orden.id); }}
+              className="w-16 h-16 bg-red-600 bg-opacity-80 text-white rounded-xl hover:bg-red-600 hover:bg-opacity-90 transition-all text-lg font-bold flex items-center justify-center"
             >
-              Rechazar
+              ✕
             </button>
           </div>
         )}
-
         {/* Botones de acción - para órdenes preparando */}
         {orden.status === 'preparando' && (
           <div className="flex items-center space-x-4 pt-4">
             <button
-              onClick={() => handleCompletarOrden(orden.id)}
-              className="flex-1 bg-green-600 bg-opacity-80 text-white px-6 py-4 rounded-xl hover:bg-green-600 hover:bg-opacity-90 transition-all text-lg font-bold"
+              onClick={(e) => { e.stopPropagation(); handleCompletarOrden(orden.id); }}
+              className="flex-1 h-16 bg-green-600 bg-opacity-80 text-white px-6 py-4 rounded-xl hover:bg-green-600 hover:bg-opacity-90 transition-all text-lg font-bold"
             >
               Completar
             </button>
             <button
-              onClick={() => handleCancelarOrden(orden.id)}
+              onClick={(e) => { e.stopPropagation(); handleCancelarOrden(orden.id); }}
               className="w-16 h-16 bg-red-600 bg-opacity-80 text-white rounded-xl hover:bg-red-600 hover:bg-opacity-90 transition-all text-lg font-bold flex items-center justify-center"
             >
               ✕
@@ -460,6 +457,102 @@ export default function OrdenesPage() {
           })}
         </div>
       </div>
+      {/* Modal de detalles de la orden */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => { setIsModalOpen(false); setSelectedOrden(null); }}
+        title={selectedOrden ? `Detalles de la Orden ${selectedOrden.id}` : 'Detalles de la Orden'}
+      >
+        {selectedOrden ? (
+          <div className="space-y-6">
+            {/* Header con ID y estado */}
+            <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Orden {selectedOrden.id}</h3>
+                <p className="text-sm text-gray-500 mt-1">Información detallada de la orden</p>
+              </div>
+              <div>
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  selectedOrden.status === 'rechazada' 
+                    ? 'bg-red-100 text-red-800' 
+                    : selectedOrden.status === 'completada' 
+                    ? 'bg-green-100 text-green-800' 
+                    : selectedOrden.status === 'pendiente' 
+                    ? 'bg-yellow-100 text-yellow-800' 
+                    : selectedOrden.status === 'preparando' 
+                    ? 'bg-blue-100 text-blue-800' 
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {statusConfig[selectedOrden.status]?.label || selectedOrden.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Información principal */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Usuario */}
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Usuario
+                </label>
+                <div className="flex items-center space-x-2">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span className="text-gray-900 font-medium">{selectedOrden.usuario}</span>
+                </div>
+              </div>
+
+              {/* Fecha de creación */}
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Fecha
+                </label>
+                <div className="flex items-center space-x-2">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-gray-700">{selectedOrden.fecha}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Detalles adicionales */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">Artículos</label>
+                <span className="text-gray-900 font-medium">{selectedOrden.articulos}</span>
+              </div>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">Mesa</label>
+                <span className="text-gray-900 font-medium">#{selectedOrden.mesa}</span>
+              </div>
+            </div>
+
+            {/* Total destacado */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <svg className="h-6 w-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700">Total de la orden</span>
+                </div>
+                <span className="text-2xl font-bold text-gray-900">${selectedOrden.total.toFixed(2)}</span>
+              </div>
+            </div>
+
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No hay información</h3>
+            <p className="mt-1 text-sm text-gray-500">No se pudo cargar la información de la orden.</p>
+          </div>
+        )}
+      </Modal>
     </DashboardLayout>
   );
 }
