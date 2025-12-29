@@ -171,7 +171,10 @@ export default function OrdenesPage() {
         try {
             console.log('Cargando órdenes iniciales...');
             const res = await fetch(`${API_URL}/live/ordenes/${SUCURSAL_ID}`, {
-                credentials: 'include'
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json'
+                }
             });
             if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
             const data = await res.json();

@@ -4,7 +4,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8080/api/:path*',
+        destination: 'https://t-order-app-95224602622.us-central1.run.app/api/:path*',
       },
     ];
   },

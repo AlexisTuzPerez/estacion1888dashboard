@@ -32,11 +32,12 @@ export async function login(email, password) {
 
 export async function verifyAuth() {
     try {
-
-        
         const response = await fetch(`${API_URL}/verifyAuth`, {
             method: 'GET',
             credentials: 'include',
+            headers: {
+                'Accept': 'application/json'
+            }
         });
         
         if (response.status === 401 || response.status === 403) {
