@@ -1,8 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { getOrdenDetalle } from '../../actions/ordenes';
+import { actualizarEstadoOrden, getOrdenDetalle } from '../../actions/ordenes';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import DashboardLayout from '../../components/DashboardLayout';
 import Modal from '../../components/Modal';
+import Toast from '../../components/Toast';
 import { useAuth } from '../../contexts/AuthContext';
 
 const API_URL = process.env.NEXT_PUBLIC_BASE_URL;
@@ -15,6 +17,84 @@ export default function OrdenesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingDetails, setIsLoadingDetails] = useState(false);
     const [ordenes, setOrdenes] = useState([]);
+
+    // Estados para UX mejorada
+    const [toast, setToast] = useState({ message: '', type: '', isVisible: false });
+    const [confirmationModal, setConfirmationModal] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info',
+        onConfirm: () => { },
+        confirmText: 'Confirmar'
+    });
+    const [actionLoading, setActionLoading] = useState({}); // { [ordenId]: true/false }
+
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type, isVisible: true });
+    };
+
+    const closeToast = () => {
+        setToast(prev => ({ ...prev, isVisible: false }));
+    };
+
+    // Audio para notificación de nueva orden - Sonido de campana
+    const playNotificationSound = () => {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const now = audioContext.currentTime;
+
+            // Frecuencias de una campana (fundamental + armónicos)
+            const frequencies = [800, 1200, 1600, 2000, 2400];
+            const volumes = [0.4, 0.3, 0.2, 0.15, 0.1]; // Volumen decreciente para armónicos
+
+            frequencies.forEach((frequency, index) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.value = frequency;
+                oscillator.type = 'sine';
+
+                // Ataque rápido y decay exponencial (característico de una campana)
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(volumes[index], now + 0.01); // Ataque rápido
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 1.0); // Decay largo
+
+                oscillator.start(now);
+                oscillator.stop(now + 1.0);
+            });
+
+
+        } catch (error) {
+
+        }
+    };
+
+    // Inicializar audio en la primera interacción del usuario
+    useEffect(() => {
+        const initAudio = () => {
+            // Crear un AudioContext vacío para "desbloquear" el audio
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioContext.resume().then(() => {
+                    console.log('🔊 Audio desbloqueado - las notificaciones sonarán');
+                });
+            } catch (error) {
+                console.log('Audio no disponible');
+            }
+            // Remover el listener después de la primera interacción
+            document.removeEventListener('click', initAudio);
+        };
+
+        document.addEventListener('click', initAudio, { once: true });
+
+        return () => {
+            document.removeEventListener('click', initAudio);
+        };
+    }, []);
 
     const statusConfig = {
         PENDIENTE: {
@@ -147,6 +227,8 @@ export default function OrdenesPage() {
 
             switch (tipo) {
                 case 'ORDEN_NUEVA':
+                    // Reproducir sonido de notificación
+                    playNotificationSound();
                     // Evitar duplicados si ya existe
                     if (existe) return prevOrdenes.map(o => o.id === orden.id ? { ...o, ...orden } : o);
                     return [orden, ...prevOrdenes];
@@ -170,21 +252,66 @@ export default function OrdenesPage() {
         return ordenes.filter(orden => (orden.estado || orden.status) === status);
     };
 
-    // Handlers para acciones (por ahora solo logs)
+    // Handlers para acciones
+    const handleAction = async (ordenId, status, successMessage, errorMessage) => {
+        setActionLoading(prev => ({ ...prev, [ordenId]: true }));
+        try {
+            await actualizarEstadoOrden(ordenId, status);
+            showToast(successMessage, 'success');
+        } catch (error) {
+            console.error(`Error al actualizar a ${status}:`, error);
+            showToast(errorMessage, 'error');
+        } finally {
+            setActionLoading(prev => {
+                const newState = { ...prev };
+                delete newState[ordenId];
+                return newState;
+            });
+        }
+    };
+
     const handleAceptarOrden = (ordenId) => {
-        console.log('Aceptar orden:', ordenId);
+        setConfirmationModal({
+            isOpen: true,
+            title: 'Aceptar Orden',
+            message: '¿Estás seguro de que deseas aceptar esta orden? Pasará a estado "Preparando".',
+            type: 'info',
+            confirmText: 'Aceptar',
+            onConfirm: () => handleAction(ordenId, 'PREPARANDO', 'Orden aceptada correctamente', 'No se pudo aceptar la orden')
+        });
     };
 
     const handleRechazarOrden = (ordenId) => {
-        console.log('Rechazar orden:', ordenId);
+        setConfirmationModal({
+            isOpen: true,
+            title: 'Rechazar Orden',
+            message: '¿Estás seguro de que deseas rechazar esta orden? Esta acción no se puede deshacer.',
+            type: 'danger',
+            confirmText: 'Rechazar',
+            onConfirm: () => handleAction(ordenId, 'RECHAZADA', 'Orden rechazada', 'No se pudo rechazar la orden')
+        });
     };
 
     const handleCompletarOrden = (ordenId) => {
-        console.log('Completar orden:', ordenId);
+        setConfirmationModal({
+            isOpen: true,
+            title: 'Completar Orden',
+            message: '¿Confirmas que la orden está lista para entregar?',
+            type: 'info',
+            confirmText: 'Completar',
+            onConfirm: () => handleAction(ordenId, 'COMPLETADA', 'Orden completada exitosamente', 'No se pudo completar la orden')
+        });
     };
 
     const handleCancelarOrden = (ordenId) => {
-        console.log('Cancelar orden:', ordenId);
+        setConfirmationModal({
+            isOpen: true,
+            title: 'Cancelar Orden',
+            message: '¿Estás seguro de que deseas cancelar esta orden que ya está en preparación?',
+            type: 'warning',
+            confirmText: 'Sí, cancelar',
+            onConfirm: () => handleAction(ordenId, 'RECHAZADA', 'Orden cancelada', 'No se pudo cancelar la orden')
+        });
     };
 
     const handleOpenModal = async (orden) => {
@@ -274,7 +401,8 @@ export default function OrdenesPage() {
         const mesa = orden.mesa || 'Para llevar';
 
         return (
-            <div className="flex-shrink-0 w-80 bg-white rounded-xl border border-gray-100 hover:shadow-md transition-shadow p-4 cursor-pointer" onClick={() => handleOpenModal(orden)}>
+            <div className={`flex-shrink-0 w-80 bg-white rounded-xl border hover:shadow-md transition-shadow p-4 cursor-pointer ${estado === 'PENDIENTE' ? 'border-yellow-400 animate-pulse' : 'border-gray-100'
+                }`} onClick={() => handleOpenModal(orden)}>
                 <div className="space-y-3">
                     {/* Header con ID y fecha */}
                     <div className="flex justify-between items-center">
@@ -310,15 +438,21 @@ export default function OrdenesPage() {
                         <div className="flex items-center space-x-4 pt-4">
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleAceptarOrden(orden.id); }}
-                                className="flex-1 h-16 bg-green-600 bg-opacity-80 text-white px-6 py-4 rounded-xl hover:bg-green-600 hover:bg-opacity-90 transition-all text-lg font-bold"
+                                disabled={actionLoading[orden.id]}
+                                className="flex-1 h-16 bg-green-600 bg-opacity-80 text-white px-6 py-4 rounded-xl hover:bg-green-600 hover:bg-opacity-90 transition-all text-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                             >
-                                Aceptar
+                                {actionLoading[orden.id] ? (
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                                ) : 'Aceptar'}
                             </button>
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleRechazarOrden(orden.id); }}
-                                className="w-16 h-16 bg-red-600 bg-opacity-80 text-white rounded-xl hover:bg-red-600 hover:bg-opacity-90 transition-all text-lg font-bold flex items-center justify-center"
+                                disabled={actionLoading[orden.id]}
+                                className="w-16 h-16 bg-red-600 bg-opacity-80 text-white rounded-xl hover:bg-red-600 hover:bg-opacity-90 transition-all text-lg font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                ✕
+                                {actionLoading[orden.id] ? (
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                ) : '✕'}
                             </button>
                         </div>
                     )}
@@ -327,15 +461,21 @@ export default function OrdenesPage() {
                         <div className="flex items-center space-x-4 pt-4">
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleCompletarOrden(orden.id); }}
-                                className="flex-1 h-16 bg-green-600 bg-opacity-80 text-white px-6 py-4 rounded-xl hover:bg-green-600 hover:bg-opacity-90 transition-all text-lg font-bold"
+                                disabled={actionLoading[orden.id]}
+                                className="flex-1 h-16 bg-green-600 bg-opacity-80 text-white px-6 py-4 rounded-xl hover:bg-green-600 hover:bg-opacity-90 transition-all text-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                             >
-                                Completar
+                                {actionLoading[orden.id] ? (
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                                ) : 'Completar'}
                             </button>
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleCancelarOrden(orden.id); }}
-                                className="w-16 h-16 bg-red-600 bg-opacity-80 text-white rounded-xl hover:bg-red-600 hover:bg-opacity-90 transition-all text-lg font-bold flex items-center justify-center"
+                                disabled={actionLoading[orden.id]}
+                                className="w-16 h-16 bg-red-600 bg-opacity-80 text-white rounded-xl hover:bg-red-600 hover:bg-opacity-90 transition-all text-lg font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                ✕
+                                {actionLoading[orden.id] ? (
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                ) : '✕'}
                             </button>
                         </div>
                     )}
@@ -569,6 +709,26 @@ export default function OrdenesPage() {
                     </div>
                 )}
             </Modal>
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={confirmationModal.isOpen}
+                onClose={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmationModal.onConfirm}
+                title={confirmationModal.title}
+                message={confirmationModal.message}
+                type={confirmationModal.type}
+                confirmText={confirmationModal.confirmText}
+            />
+
+            {/* Toast Notification */}
+            {toast.isVisible && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={closeToast}
+                />
+            )}
         </DashboardLayout>
     );
 }

@@ -152,3 +152,32 @@ export async function getOrdenDetalle(ordenId) {
         throw error;
     }
 }
+
+/**
+ * Actualiza el estado de una orden.
+ * @param {number|string} ordenId - ID de la orden
+ * @param {string} nuevoStatus - Nuevo estado (PENDIENTE, PREPARANDO, COMPLETADA, RECHAZADA)
+ * @returns {Promise<Object>} - Respuesta del servidor
+ */
+export async function actualizarEstadoOrden(ordenId, nuevoStatus) {
+    try {
+        const response = await fetch(`${API_URL}/ordenes/${ordenId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: nuevoStatus }),
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error al actualizar estado de orden:', error);
+        throw error;
+    }
+}
