@@ -7,7 +7,7 @@ export async function login(email, password) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            credentials: 'include', 
+            credentials: 'include',
             body: JSON.stringify({ email, password }),
         });
         const responseText = await response.text();
@@ -17,14 +17,14 @@ export async function login(email, password) {
         let userInfo;
         try {
             userInfo = JSON.parse(responseText);
+            if (!userInfo || userInfo.user.id !== 152) {
+
+                return { error: 'Error: Usuario no autorizado para acceder a este dashboard' };
+            }
+            return userInfo;
         } catch {
-            return { message: responseText, success: true, status: response.status };
+            return { success: true, message: responseText };
         }
-        // Verificación de usuario permitido
-        if (!userInfo || userInfo.id !== 152) {
-            return { error: 'Error al iniciar sesión' };
-        }
-        return userInfo;
     } catch (error) {
         return { error: 'Error de conexión' };
     }
@@ -39,11 +39,11 @@ export async function verifyAuth() {
                 'Accept': 'application/json'
             }
         });
-        
+
         if (response.status === 401 || response.status === 403) {
             return false;
         }
-        
+
         return response.ok;
     } catch (error) {
         return false;
