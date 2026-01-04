@@ -233,8 +233,6 @@ export default function OrdenesPage() {
     function handleOrdenEvent(data) {
         const { tipo, orden } = data;
 
-        console.log(`🔄 Procesando evento SSE: ${tipo}`, orden?.id);
-
         if (!orden) return;
 
         setOrdenes(prevOrdenes => {
@@ -246,20 +244,16 @@ export default function OrdenesPage() {
                     playNotificationSound();
                     // Evitar duplicados si ya existe
                     if (existe) {
-                        console.log(`⚠️ Orden ${orden.id} ya existe, actualizando...`);
                         return prevOrdenes.map(o => o.id === orden.id ? { ...o, ...orden } : o);
                     }
-                    console.log(`✨ Agregando nueva orden ${orden.id}`);
                     return [orden, ...prevOrdenes];
 
                 case 'ORDEN_ACTUALIZADA':
                 case 'ORDEN_EXISTENTE': // Tratamos existente igual que actualizada para sincronizar
                     if (existe) {
-                        console.log(`📝 Actualizando orden existente ${orden.id} a estado ${orden.estado}`);
                         return prevOrdenes.map(o => o.id === orden.id ? { ...o, ...orden } : o);
                     } else {
                         // Si llega actualizada pero no la teníamos
-                        console.log(`➕ Orden actualizada ${orden.id} no existía, agregando...`);
                         return [orden, ...prevOrdenes];
                     }
 
