@@ -13,7 +13,7 @@ const SUCURSAL_ID = 1;
 export default function OrdenesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedOrden, setSelectedOrden] = useState(null);
-    const { checkTokenExpiry } = useAuth();
+    const { checkTokenExpiry, getToken } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingDetails, setIsLoadingDetails] = useState(false);
     const [ordenes, setOrdenes] = useState([]);
@@ -188,32 +188,42 @@ export default function OrdenesPage() {
     }
 
     function conectarTiempoReal() {
-        console.log('Conectando al stream de eventos...');
-        const url = `${API_URL}/live/ordenes-dia/${SUCURSAL_ID}`;
+        // 1. Obtener el token
+        const token = getToken();
+
+        if (!token) {
+            console.error("❌ No hay token disponible para la conexión SSE");
+            return;
+        }
+
+        // 2. Construir la URL con el parámetro 'token'
+        const url = `${API_URL}/live/ordenes-dia/${SUCURSAL_ID}?token=${token}`;
+
+        // 3. Crear el EventSource
         const eventSource = new EventSource(url, { withCredentials: true });
 
         eventSource.onopen = () => {
-            console.log('Conexión SSE establecida con éxito');
+            console.log('✅ Conexión en tiempo real establecida');
         };
 
         eventSource.onmessage = (event) => {
             try {
-                // Ignorar heartbeats si el backend envía algo como "heartbeat" o similar que no sea JSON válido
+                // Ignorar heartbeats si el backend envía algo como "heartbeat"
                 if (event.data === 'heartbeat') return;
 
                 const data = JSON.parse(event.data);
-                console.log('Evento recibido:', data);
+                console.log('📦 Evento recibido:', data);
                 handleOrdenEvent(data);
             } catch (err) {
-                console.error('Error procesando mensaje SSE:', err, event.data);
+                console.error('❌ Error parseando evento SSE:', err, event.data);
             }
         };
 
         eventSource.onerror = (err) => {
-            console.error("Error en SSE", err);
+            console.error("⚠️ Error en SSE", err);
             // EventSource intenta reconectar automáticamente
             if (eventSource.readyState === EventSource.CLOSED) {
-                console.log("La conexión SSE fue cerrada.");
+                console.log("Conexión SSE cerrada, intentando reconectar...");
             }
         };
 
@@ -222,6 +232,8 @@ export default function OrdenesPage() {
 
     function handleOrdenEvent(data) {
         const { tipo, orden } = data;
+
+        console.log(`🔄 Procesando evento SSE: ${tipo}`, orden?.id);
 
         if (!orden) return;
 
@@ -233,15 +245,21 @@ export default function OrdenesPage() {
                     // Reproducir sonido de notificación
                     playNotificationSound();
                     // Evitar duplicados si ya existe
-                    if (existe) return prevOrdenes.map(o => o.id === orden.id ? { ...o, ...orden } : o);
+                    if (existe) {
+                        console.log(`⚠️ Orden ${orden.id} ya existe, actualizando...`);
+                        return prevOrdenes.map(o => o.id === orden.id ? { ...o, ...orden } : o);
+                    }
+                    console.log(`✨ Agregando nueva orden ${orden.id}`);
                     return [orden, ...prevOrdenes];
 
                 case 'ORDEN_ACTUALIZADA':
                 case 'ORDEN_EXISTENTE': // Tratamos existente igual que actualizada para sincronizar
                     if (existe) {
+                        console.log(`📝 Actualizando orden existente ${orden.id} a estado ${orden.estado}`);
                         return prevOrdenes.map(o => o.id === orden.id ? { ...o, ...orden } : o);
                     } else {
                         // Si llega actualizada pero no la teníamos
+                        console.log(`➕ Orden actualizada ${orden.id} no existía, agregando...`);
                         return [orden, ...prevOrdenes];
                     }
 
@@ -257,12 +275,32 @@ export default function OrdenesPage() {
 
     // Handlers para acciones
     const handleAction = async (ordenId, status, successMessage, errorMessage) => {
+        // 1. Guardar estado previo para Rollback
+        const index = ordenes.findIndex(o => o.id === ordenId);
+        const ordenPrevia = index !== -1 ? { ...ordenes[index] } : null;
+
+        // 2. ACTUALIZACIÓN OPTIMISTA (Instantánea)
+        setOrdenes(prevOrdenes =>
+            prevOrdenes.map(o =>
+                o.id === ordenId ? { ...o, estado: status, status: status } : o
+            )
+        );
+
         setActionLoading(prev => ({ ...prev, [ordenId]: true }));
+
         try {
             await actualizarEstadoOrden(ordenId, status);
             showToast(successMessage, 'success');
         } catch (error) {
             console.error(`Error al actualizar a ${status}:`, error);
+
+            // 3. ROLLBACK (Revertir si falla la API)
+            if (ordenPrevia) {
+                setOrdenes(prevOrdenes =>
+                    prevOrdenes.map(o => o.id === ordenId ? ordenPrevia : o)
+                );
+            }
+
             showToast(errorMessage, 'error');
         } finally {
             setActionLoading(prev => {
@@ -642,7 +680,7 @@ export default function OrdenesPage() {
 
                         {/* Lista de Productos Detallada */}
                         <div className="space-y-3 mt-6">
-                            <h4 className="font-medium text-gray-900 pb-2 border-b border-gray-100">Productos ({selectedOrden.productos ? selectedOrden.productos.length : 0})</h4>
+                            <h4 className="font-medium text-gray-900 pb-2 border-b border-gray-100">Productos ({selectedOrden.productos ? selectedOrden.productos.reduce((acc, prod) => acc + (Number(prod.cantidad) || 0), 0) : 0})</h4>
 
                             {isLoadingDetails ? (
                                 <div className="py-8 text-center">

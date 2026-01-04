@@ -14,11 +14,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const checkAuth = async () => {
       const isValid = await verifyAuth();
-      
+
       setIsAuthenticated(isValid);
       setIsLoading(false);
     };
-    
+
     checkAuth();
   }, []);
 
@@ -34,6 +34,7 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     document.cookie = 'toDoAppCookie=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    localStorage.removeItem('token');
     setIsAuthenticated(false);
     router.push('/iniciar-sesion');
   };
@@ -50,8 +51,21 @@ export function AuthProvider({ children }) {
     return null;
   }
 
+  const getToken = () => {
+    if (typeof window === 'undefined') return null;
+
+    // Obtenemos el token almacenado en login (ya que la cookie es HttpOnly)
+    const localToken = localStorage.getItem('token');
+    if (localToken) {
+      return localToken;
+    }
+
+    console.warn('⚠️ [AuthContext] No se encontró el token en localStorage');
+    return null;
+  };
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, checkTokenExpiry }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, logout, checkTokenExpiry, getToken }}>
       {children}
     </AuthContext.Provider>
   );

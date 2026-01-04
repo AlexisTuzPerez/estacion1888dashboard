@@ -574,7 +574,7 @@ export default function OrdenesPage() {
 
             {/* Lista de Productos Detallada */}
             <div className="space-y-3 mt-6">
-              <h4 className="font-medium text-gray-900 pb-2 border-b border-gray-100">Productos ({selectedOrden.productos ? selectedOrden.productos.length : 0})</h4>
+              <h4 className="font-medium text-gray-900 pb-2 border-b border-gray-100">Productos ({selectedOrden.productos ? selectedOrden.productos.reduce((acc, prod) => acc + (Number(prod.cantidad) || 0), 0) : 0})</h4>
 
               {isLoadingDetails ? (
                 <div className="py-8 text-center">

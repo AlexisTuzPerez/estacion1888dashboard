@@ -18,7 +18,6 @@ export async function login(email, password) {
         try {
             userInfo = JSON.parse(responseText);
             if (!userInfo || userInfo.user.id !== 152) {
-
                 return { error: 'Error: Usuario no autorizado para acceder a este dashboard' };
             }
             return userInfo;
