@@ -169,20 +169,24 @@ export default function OrdenesPage() {
 
     async function cargarOrdenesIniciales() {
         try {
-            console.log('Cargando órdenes iniciales...');
+            console.log('🔄 Cargando órdenes iniciales...');
             const res = await fetch(`${API_URL}/live/ordenes/${SUCURSAL_ID}`, {
                 credentials: 'include',
                 headers: {
                     'Accept': 'application/json'
                 }
             });
-            if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
+            if (!res.ok) {
+                console.error(`❌ Error HTTP al cargar iniciales: ${res.status} ${res.statusText}`);
+                throw new Error(`Error HTTP: ${res.status}`);
+            }
             const data = await res.json();
+            console.log(`✅ ${Array.isArray(data) ? data.length : 0} órdenes iniciales cargadas.`);
             // Asegurarse de que data es un array
             setOrdenes(Array.isArray(data) ? data : []);
             setIsLoading(false);
         } catch (error) {
-            console.error('Error cargando órdenes iniciales:', error);
+            console.error('❌ Error cargando órdenes iniciales:', error);
             setIsLoading(false);
         }
     }
@@ -192,38 +196,46 @@ export default function OrdenesPage() {
         const token = getToken();
 
         if (!token) {
-            console.error("❌ No hay token disponible para la conexión SSE");
+            console.error("❌ No hay token disponible para la conexión SSE. Abortando conexión...");
             return;
         }
 
         // 2. Construir la URL con el parámetro 'token'
         const url = `${API_URL}/live/ordenes-dia/${SUCURSAL_ID}?token=${token}`;
+        console.log(`🔌 Iniciando conexión SSE a: ${API_URL}/live/ordenes-dia/${SUCURSAL_ID}`);
 
         // 3. Crear el EventSource
         const eventSource = new EventSource(url, { withCredentials: true });
 
         eventSource.onopen = () => {
-            console.log('✅ Conexión en tiempo real establecida');
+            console.log('✅ Conexión en tiempo real (SSE) establecida correctamente');
         };
 
         eventSource.onmessage = (event) => {
             try {
                 // Ignorar heartbeats si el backend envía algo como "heartbeat"
-                if (event.data === 'heartbeat') return;
+                if (event.data === 'heartbeat') {
+                    console.log('💓 Heartbeat recibido');
+                    return;
+                }
 
                 const data = JSON.parse(event.data);
-                console.log('📦 Evento recibido:', data);
+                console.log('📦 Evento SSE recibido:', data.tipo, data.orden?.id);
                 handleOrdenEvent(data);
             } catch (err) {
-                console.error('❌ Error parseando evento SSE:', err, event.data);
+                console.error('❌ Error parseando evento SSE:', err);
+                console.error('Contenido del evento fallido:', event.data);
             }
         };
 
         eventSource.onerror = (err) => {
-            console.error("⚠️ Error en SSE", err);
-            // EventSource intenta reconectar automáticamente
-            if (eventSource.readyState === EventSource.CLOSED) {
-                console.log("Conexión SSE cerrada, intentando reconectar...");
+            console.error("⚠️ Error detectado en la conexión SSE:", err);
+
+            // Verificamos el estado de la conexión
+            if (eventSource.readyState === EventSource.CONNECTING) {
+                console.log("⏳ SSE: Intentando reconectar...");
+            } else if (eventSource.readyState === EventSource.CLOSED) {
+                console.log("🚫 SSE: Conexión cerrada");
             }
         };
 
@@ -233,31 +245,41 @@ export default function OrdenesPage() {
     function handleOrdenEvent(data) {
         const { tipo, orden } = data;
 
-        if (!orden) return;
+        if (!orden) {
+            console.warn('⚠️ Evento SSE recibido sin datos de orden:', data);
+            return;
+        }
+
+        console.log(`🛠️ Procesando evento: ${tipo} para orden #${orden.id}`);
 
         setOrdenes(prevOrdenes => {
             const existe = prevOrdenes.find(o => o.id === orden.id);
 
             switch (tipo) {
                 case 'ORDEN_NUEVA':
+                    console.log(`✨ Nueva orden detectada: #${orden.id}`);
                     // Reproducir sonido de notificación
                     playNotificationSound();
                     // Evitar duplicados si ya existe
                     if (existe) {
+                        console.log(`📝 Actualizando orden existente #${orden.id} (llegó como ORDEN_NUEVA)`);
                         return prevOrdenes.map(o => o.id === orden.id ? { ...o, ...orden } : o);
                     }
                     return [orden, ...prevOrdenes];
 
                 case 'ORDEN_ACTUALIZADA':
                 case 'ORDEN_EXISTENTE': // Tratamos existente igual que actualizada para sincronizar
+                    console.log(`🔄 Actualizando orden #${orden.id} (Tipo: ${tipo}, Estado: ${orden.estado || orden.status})`);
                     if (existe) {
                         return prevOrdenes.map(o => o.id === orden.id ? { ...o, ...orden } : o);
                     } else {
+                        console.log(`➕ Orden #${orden.id} no estaba en la lista, añadiendo...`);
                         // Si llega actualizada pero no la teníamos
                         return [orden, ...prevOrdenes];
                     }
 
                 default:
+                    console.warn(`❓ Tipo de evento desconocido: ${tipo}`);
                     return prevOrdenes;
             }
         });
