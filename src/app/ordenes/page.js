@@ -376,9 +376,10 @@ export default function OrdenesPage() {
         const usuario = orden.usuarioNombre || orden.usuario || 'Cliente';
         const fecha = orden.fechaCreacion || orden.fecha;
         const estado = orden.estado || orden.status;
-        const mesa = orden.mesa || 'Para llevar';
+        const tipoOrden = orden.tipoOrden || (orden.mesa ? 'COMER_AQUI' : 'PARA_LLEVAR');
+        const mesa = (tipoOrden === 'PARA_LLEVAR' || !orden.mesa) ? 'Para Llevar' : (orden.mesa?.numero || orden.mesa);
 
-        setSelectedOrden({ ...orden, usuario, fecha, estado, mesa });
+        setSelectedOrden({ ...orden, usuario, fecha, estado, mesa, tipoOrden });
         setIsModalOpen(true);
         setIsLoadingDetails(true);
 
@@ -389,12 +390,16 @@ export default function OrdenesPage() {
             const fechaCompleta = ordenCompleta.fechaCreacion || fecha;
             const estadoCompleto = ordenCompleta.estado || estado;
             // Aseguramos que tenemos los productos
+            const tipoOrdenCompleta = ordenCompleta.tipoOrden || selectedOrden.tipoOrden;
+            const mesaCompleta = (tipoOrdenCompleta === 'PARA_LLEVAR' || !ordenCompleta.mesa) ? 'Para Llevar' : (ordenCompleta.mesa?.numero || ordenCompleta.mesa);
+
             setSelectedOrden({
                 ...ordenCompleta,
                 usuario: usuarioCompleto,
                 fecha: fechaCompleta,
                 estado: estadoCompleto,
-                mesa: ordenCompleta.mesa || mesa
+                tipoOrden: tipoOrdenCompleta,
+                mesa: mesaCompleta
             });
         } catch (error) {
             console.error("Error cargando detalles de la orden", error);
@@ -455,7 +460,9 @@ export default function OrdenesPage() {
         const usuario = orden.usuarioNombre || orden.usuario || 'Cliente';
         const fecha = orden.fechaCreacion || orden.fecha;
         const estado = orden.estado || orden.status;
-        const mesa = orden.mesa || 'Para llevar';
+        const hasMesa = orden.mesa && (typeof orden.mesa === 'object' ? orden.mesa.numero : orden.mesa);
+        const tipoOrden = orden.tipoOrden || (hasMesa ? 'COMER_AQUI' : 'PARA_LLEVAR');
+        const mesa = hasMesa ? `Mesa ${typeof orden.mesa === 'object' ? orden.mesa.numero : orden.mesa}` : 'Para Llevar';
 
         return (
             <div className={`flex-shrink-0 w-80 bg-white rounded-xl border hover:shadow-md transition-shadow p-4 cursor-pointer ${estado === 'PENDIENTE' ? 'border-yellow-400 animate-pulse' : 'border-gray-100'
@@ -479,7 +486,7 @@ export default function OrdenesPage() {
                     {/* Detalles */}
                     <div className="space-y-1 text-sm text-gray-600">
                         <div className="flex justify-between">
-                            <span>Mesa:</span>
+                            <span>Destino:</span>
                             <span className="font-medium">{mesa}</span>
                         </div>
                     </div>
@@ -633,7 +640,7 @@ export default function OrdenesPage() {
                         <div className="flex items-center justify-between pb-4 border-b border-gray-200">
                             <div>
                                 <h3 className="text-lg font-medium text-gray-900">Orden #{selectedOrden.id}</h3>
-                                <p className="text-sm text-gray-500 mt-1">Información detallada de la orden</p>
+                                <p className="text-sm text-gray-500 mt-1">Detalles de la orden</p>
                             </div>
                             <div>
                                 <span className={`px-3 py-1 text-xs font-medium rounded-full ${selectedOrden.estado === 'RECHAZADA'
@@ -685,8 +692,8 @@ export default function OrdenesPage() {
                         {/* Detalles adicionales - Mesa y Notas Globales */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1">
-                                <label className="block text-sm font-medium text-gray-700">Mesa</label>
-                                <span className="text-gray-900 font-medium">{selectedOrden.mesa || 'Para llevar'}</span>
+                                <label className="block text-sm font-medium text-gray-700">{selectedOrden.tipoOrden === 'PARA_LLEVAR' ? 'Destino de Orden' : 'Mesa / Asiento'}</label>
+                                <span className="text-gray-900 font-medium">{selectedOrden.tipoOrden === 'PARA_LLEVAR' ? 'Para Llevar' : selectedOrden.mesa}</span>
                             </div>
                             <div className="space-y-1">
                                 <label className="block text-sm font-medium text-gray-700">Notas Generales</label>

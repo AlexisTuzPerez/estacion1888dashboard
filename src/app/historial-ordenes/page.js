@@ -139,12 +139,17 @@ export default function OrdenesPage() {
     try {
       const ordenCompleta = await getOrdenDetalle(orden.id);
       // Mezclamos con lo que ya teníamos por si acaso
+      const tipoOrdenCompleta = ordenCompleta.tipoOrden || orden.tipoOrden || 'COMER_AQUI';
+      const mesaCompleta = tipoOrdenCompleta === 'PARA_LLEVAR' ? 'Para llevar' : (ordenCompleta.mesa?.numero || orden.mesa?.numero || ordenCompleta.mesa || orden.mesa || '---');
+
       setSelectedOrden({
         ...orden,
         ...ordenCompleta,
         // Aseguramos mantener campos si el endpoint detalle los trae diferente, o priorizamos detalle
         usuario: ordenCompleta.usuarioNombre || orden.usuario || ordenCompleta.usuario,
-        estado: ordenCompleta.estado || orden.estado
+        estado: ordenCompleta.estado || orden.estado,
+        tipoOrden: tipoOrdenCompleta,
+        mesa: mesaCompleta
       });
     } catch (error) {
       console.error("Error al cargar detalles de la orden:", error);
@@ -330,6 +335,7 @@ export default function OrdenesPage() {
                       </button>
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Artículos</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Tipo</th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Mesa</th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
                       <button
@@ -360,6 +366,9 @@ export default function OrdenesPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-8"></div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="h-4 bg-gray-200 rounded animate-pulse w-8"></div>
@@ -417,6 +426,7 @@ export default function OrdenesPage() {
                       <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Usuario</th>
                       <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Fecha de creación</th>
                       <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Artículos</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Tipo</th>
                       <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Mesa</th>
                       <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">Total</th>
                     </tr>
@@ -470,8 +480,13 @@ export default function OrdenesPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4">
+                            <div className={`text-sm font-medium ${orden.tipoOrden === 'PARA_LLEVAR' ? 'text-orange-600' : 'text-green-600'}`}>
+                              {orden.tipoOrden === 'PARA_LLEVAR' ? 'Para Llevar' : 'Comer Aquí'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
                             <div className="text-sm font-medium text-gray-900">
-                              {orden.mesa}
+                              {orden.tipoOrden === 'PARA_LLEVAR' ? '---' : (orden.mesa?.numero || orden.mesa || '---')}
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -513,7 +528,7 @@ export default function OrdenesPage() {
             <div className="flex items-center justify-between pb-4 border-b border-gray-200">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">Orden #{selectedOrden.id}</h3>
-                <p className="text-sm text-gray-500 mt-1">Información detallada de la orden</p>
+                <p className="text-sm text-gray-500 mt-1">Detalles de la orden</p>
               </div>
               <div>
                 <span className={`px-3 py-1 text-xs font-medium rounded-full ${selectedOrden.estado.toLowerCase() === 'rechazada'
@@ -563,8 +578,8 @@ export default function OrdenesPage() {
             {/* Artículos y mesa */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700">Mesa</label>
-                <span className="text-gray-900 font-medium">#{selectedOrden.mesa || 'Para llevar'}</span>
+                <label className="block text-sm font-medium text-gray-700">{selectedOrden.tipoOrden === 'PARA_LLEVAR' ? 'Destino de Orden' : 'Mesa / Asiento'}</label>
+                <span className="text-gray-900 font-medium">{selectedOrden.tipoOrden === 'PARA_LLEVAR' ? 'Para Llevar' : selectedOrden.mesa}</span>
               </div>
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700">Notas</label>
