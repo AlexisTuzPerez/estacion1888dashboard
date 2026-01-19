@@ -11,7 +11,7 @@ export async function getProductosBySubcategoria(subcategoriaId) {
         });
         return response.json();
     } catch (error) {
-        console.error('Error al obtener categorías:', error);
+        console.error('Error al obtener subcategorías:', error);
         throw error;
     }
 }
@@ -30,7 +30,7 @@ export async function getAllProductos() {
 }
 
 export async function getProductoById(productoId) {
-    try{
+    try {
         const response = await fetch(`${API_URL}/productos/${productoId}`, {
             method: 'GET',
             credentials: 'include',
@@ -44,7 +44,7 @@ export async function getProductoById(productoId) {
 
 
 export async function postProducto(productoData) {
-    try{
+    try {
         const response = await fetch(`${API_URL}/productos`, {
             method: 'POST',
             headers: {
@@ -62,7 +62,7 @@ export async function postProducto(productoData) {
 
 
 export async function updateProducto(productoId, productoData) {
-    try{
+    try {
         await fetch(`${API_URL}/productos/${productoId}`, {
             method: 'PUT',
             headers: {
@@ -71,7 +71,7 @@ export async function updateProducto(productoId, productoData) {
             credentials: 'include',
             body: JSON.stringify(productoData),
         });
-        return 
+        return
     } catch (error) {
         console.error('Error al actualizar producto:', error);
         throw error;
@@ -80,7 +80,7 @@ export async function updateProducto(productoId, productoData) {
 
 
 export async function deleteProducto(productoId) {
-    try{
+    try {
         const response = await fetch(`${API_URL}/productos/${productoId}`, {
             method: 'DELETE',
             credentials: 'include',
@@ -108,11 +108,11 @@ export async function updateProductoOrder(ordenData) {
                 posicion: item.posicion
             }))),
         });
-        
+
         if (!response.ok) {
             throw new Error('Error al actualizar el orden de los productos');
         }
-        
+
         return response.json();
     } catch (error) {
         console.error('Error al actualizar el orden de productos:', error);

@@ -1,24 +1,24 @@
 'use client';
 import {
-    closestCenter,
-    DndContext,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors
 } from '@dnd-kit/core';
 import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    useSortable,
-    verticalListSortingStrategy
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { getCategorias } from '../../actions/categoria';
 import { deleteProducto, getProductosBySubcategoria, postProducto, updateProducto, updateProductoOrder } from '../../actions/productos';
+import { getSubcategorias } from '../../actions/subcategorias';
 import { getTamanos } from '../../actions/tamanos';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import DashboardLayout from '../../components/DashboardLayout';
@@ -28,7 +28,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 export default function ProductosPage() {
   const { checkTokenExpiry } = useAuth();
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [modalMode, setModalMode] = useState('view'); // 'view', 'create', 'edit'
@@ -38,20 +38,20 @@ export default function ProductosPage() {
   const [loadingCategories, setLoadingCategories] = useState(new Set());
   const [categoriesLoaded, setCategoriesLoaded] = useState(new Set());
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
-  const [confirmationModal, setConfirmationModal] = useState({ 
-    isOpen: false, 
-    title: '', 
-    message: '', 
-    onConfirm: null 
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null
   });
-  
+
   // Estados para el modal de posición
   const [isPositionModalOpen, setIsPositionModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedSubcategoriaModal, setSelectedSubcategoriaModal] = useState(null);
   const [categoryProducts, setCategoryProducts] = useState([]);
   const [loadingModalProducts, setLoadingModalProducts] = useState(false);
   const [loadingReorderProducts, setLoadingReorderProducts] = useState(false);
-  
+
   // Sensores para drag and drop
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -59,60 +59,60 @@ export default function ProductosPage() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-  
+
   useEffect(() => {
     checkTokenExpiry();
   }, [checkTokenExpiry]);
 
-  const fetchCategorias = async () => {
+  const fetchSubcategorias = async () => {
     try {
       setLoading(true);
-      const categorias = await getCategorias();
-      setSubcategorias(categorias);
-      
-      // Inicializar todas las categorías como cargando
-      const initialLoadingSet = new Set(categorias.map(cat => cat.id));
+      const subcategorias = await getSubcategorias();
+      setSubcategorias(subcategorias);
+
+      // Inicializar todas las subcategorías como cargando
+      const initialLoadingSet = new Set(subcategorias.map(cat => cat.id));
       setLoadingCategories(initialLoadingSet);
       setCategoriesLoaded(new Set());
-      
-      // Cargar productos de todas las categorías de forma asíncrona e independiente
-      categorias.forEach(async (categoria) => {
+
+      // Cargar productos de todas las subcategorías de forma asíncrona e independiente
+      subcategorias.forEach(async (subcategoria) => {
         try {
-          const productos = await getProductosBySubcategoria(categoria.id);
-          
-          // Actualizar productos para esta categoría específica
+          const productos = await getProductosBySubcategoria(subcategoria.id);
+
+          // Actualizar productos para esta subcategoría específica
           setProductosPorSubcategoria(prev => ({
             ...prev,
-            [categoria.id]: productos
+            [subcategoria.id]: productos
           }));
-          
-          // Marcar esta categoría como cargada
-          setCategoriesLoaded(prev => new Set([...prev, categoria.id]));
-          
+
+          // Marcar esta subcategoría como cargada
+          setCategoriesLoaded(prev => new Set([...prev, subcategoria.id]));
+
         } catch (error) {
-          console.error(`Error al cargar productos de ${categoria.nombre}:`, error);
-          
+          console.error(`Error al cargar productos de ${subcategoria.nombre}:`, error);
+
           // En caso de error, marcar como cargada con array vacío
           setProductosPorSubcategoria(prev => ({
             ...prev,
-            [categoria.id]: []
+            [subcategoria.id]: []
           }));
-          setCategoriesLoaded(prev => new Set([...prev, categoria.id]));
+          setCategoriesLoaded(prev => new Set([...prev, subcategoria.id]));
         } finally {
-          // Quitar el skeleton de esta categoría específica
+          // Quitar el skeleton de esta subcategoría específica
           setLoadingCategories(prev => {
             const newSet = new Set(prev);
-            newSet.delete(categoria.id);
+            newSet.delete(subcategoria.id);
             return newSet;
           });
         }
       });
-      
-      // Ocultar el loading principal una vez que tenemos las categorías
+
+      // Ocultar el loading principal una vez que tenemos las subcategorías
       setLoading(false);
-      
+
     } catch (error) {
-      console.error('Error al cargar categorías:', error);
+      console.error('Error al cargar subcategorías:', error);
       setLoading(false);
     }
   };
@@ -127,7 +127,7 @@ export default function ProductosPage() {
   };
 
   useEffect(() => {
-    fetchCategorias();
+    fetchSubcategorias();
     fetchTamanos();
   }, []);
 
@@ -167,27 +167,27 @@ export default function ProductosPage() {
       if (modalMode === 'edit' && selectedProduct?.id) {
         await updateProducto(selectedProduct.id, productData);
         showNotification('Producto actualizado exitosamente', 'success');
-        
+
         // Cerrar modal primero
         closeModal();
-        
-        // Actualizar solo la categoría específica en lugar de recargar todas
+
+        // Actualizar solo la subcategoría específica en lugar de recargar todas
         const subcategoriaId = productData.subcategoriaId;
         console.log('Subcategoria ID del producto editado:', subcategoriaId);
-        
+
         if (subcategoriaId) {
           // Activar skeleton para mostrar carga
           setLoadingCategories(prev => new Set([...prev, subcategoriaId]));
-          
+
           // Pequeño delay para asegurar que el skeleton se muestre
           await new Promise(resolve => setTimeout(resolve, 150));
-          
+
           const productos = await getProductosBySubcategoria(subcategoriaId);
           setProductosPorSubcategoria(prev => ({
             ...prev,
             [subcategoriaId]: productos
           }));
-          
+
           // Desactivar skeleton
           setLoadingCategories(prev => {
             const newSet = new Set(prev);
@@ -195,33 +195,33 @@ export default function ProductosPage() {
             return newSet;
           });
         } else {
-          console.log('No se encontró subcategoriaId, recargando todas las categorías');
-          fetchCategorias();
+          console.log('No se encontró subcategoriaId, recargando todas las subcategorías');
+          fetchSubcategorias();
         }
       } else {
         await postProducto(productData);
         showNotification('Producto creado exitosamente', 'success');
-        
+
         // Cerrar modal primero
         closeModal();
-        
-        // Actualizar solo la categoría específica en lugar de recargar todas
+
+        // Actualizar solo la subcategoría específica en lugar de recargar todas
         const subcategoriaId = productData.subcategoriaId;
 
-        
+
         if (subcategoriaId) {
           // Activar skeleton para mostrar carga
           setLoadingCategories(prev => new Set([...prev, subcategoriaId]));
-          
+
           // Pequeño delay para asegurar que el skeleton se muestre
           await new Promise(resolve => setTimeout(resolve, 150));
-          
+
           const productos = await getProductosBySubcategoria(subcategoriaId);
           setProductosPorSubcategoria(prev => ({
             ...prev,
             [subcategoriaId]: productos
           }));
-          
+
           // Desactivar skeleton
           setLoadingCategories(prev => {
             const newSet = new Set(prev);
@@ -229,11 +229,11 @@ export default function ProductosPage() {
             return newSet;
           });
         } else {
-          console.log('No se encontró subcategoriaId, recargando todas las categorías');
-          fetchCategorias();
+          console.log('No se encontró subcategoriaId, recargando todas las subcategorías');
+          fetchSubcategorias();
         }
       }
-      
+
     } catch (error) {
       console.error('Error al guardar producto:', error);
       const errorMessage = error.message || 'Error al guardar el producto';
@@ -256,14 +256,14 @@ export default function ProductosPage() {
     try {
       const result = await deleteProducto(productId);
       showNotification('Producto eliminado exitosamente', 'success');
-      
+
       // Obtener subcategoriaId antes de cerrar el modal
       const subcategoriaId = selectedProduct?.subcategoriaId;
       console.log('Subcategoria ID del producto eliminado:', subcategoriaId);
-      
+
       closeModal();
-      
-      // Actualizar solo la categoría específica en lugar de recargar todas
+
+      // Actualizar solo la subcategoría específica en lugar de recargar todas
       if (subcategoriaId) {
         const productos = await getProductosBySubcategoria(subcategoriaId);
         setProductosPorSubcategoria(prev => ({
@@ -271,21 +271,21 @@ export default function ProductosPage() {
           [subcategoriaId]: productos
         }));
       } else {
-        // Si no tenemos subcategoriaId, recargar todas las categorías como fallback
-        console.log('No se encontró subcategoriaId, recargando todas las categorías');
-        fetchCategorias();
+        // Si no tenemos subcategoriaId, recargar todas las subcategorías como fallback
+        console.log('No se encontró subcategoriaId, recargando todas las subcategorías');
+        fetchSubcategorias();
       }
-      
+
     } catch (error) {
       console.error('Error al eliminar producto:', error);
       let errorMessage = 'Error al eliminar el producto';
-      
+
       if (error.message) {
         errorMessage = error.message;
       } else if (error.response) {
         errorMessage = `Error del servidor: ${error.response.status}`;
       }
-      
+
       showNotification(errorMessage, 'error');
     }
   };
@@ -295,28 +295,34 @@ export default function ProductosPage() {
   };
 
   // Funciones para el modal de posición
-  const openPositionModal = async (category) => {
-    try {
-      setSelectedCategory(category);
-      setIsPositionModalOpen(true);
-      setLoadingModalProducts(true);
-      
-      const productos = await getProductosBySubcategoria(category.id);
-      setCategoryProducts(productos);
-      setLoadingModalProducts(false);
-    } catch (error) {
-      console.error('Error al cargar productos para posición:', error);
-      showNotification('Error al cargar productos', 'error');
-      setLoadingModalProducts(false);
-    }
+  const openPositionModal = async (subcategoria) => {
+    setSelectedSubcategoriaModal(subcategoria);
+    setIsPositionModalOpen(true);
   };
 
   const closePositionModal = () => {
     setIsPositionModalOpen(false);
-    setSelectedCategory(null);
+    setSelectedSubcategoriaModal(null);
     setCategoryProducts([]);
-    setLoadingModalProducts(false);
   };
+
+  useEffect(() => {
+    const fetchModalProducts = async () => {
+      if (selectedSubcategoriaModal) {
+        setLoadingModalProducts(true);
+        try {
+          const productos = await getProductosBySubcategoria(selectedSubcategoriaModal.id);
+          setCategoryProducts(productos);
+        } catch (error) {
+          console.error('Error al cargar productos para reordenar:', error);
+        } finally {
+          setLoadingModalProducts(false);
+        }
+      }
+    };
+
+    fetchModalProducts();
+  }, [selectedSubcategoriaModal]);
 
   const handleProductDragEnd = async (event) => {
     const { active, over } = event;
@@ -335,43 +341,43 @@ export default function ProductosPage() {
           id: product.id,
           posicion: index + 1
         }));
-        
+
         await updateProductoOrder(newOrder);
-        
+
         // Mostrar notificación de éxito
         showNotification('Orden de productos actualizado correctamente', 'success');
-        
-        // Recargar la categoría específica después del éxito
-        if (selectedCategory?.id) {
+
+        // Recargar la subcategoría específica después del éxito
+        if (selectedSubcategoriaModal?.id) {
           // Activar skeleton para mostrar carga
-          setLoadingCategories(prev => new Set([...prev, selectedCategory.id]));
-          
+          setLoadingCategories(prev => new Set([...prev, selectedSubcategoriaModal.id]));
+
           // Pequeño delay para asegurar que el skeleton se muestre
           await new Promise(resolve => setTimeout(resolve, 150));
-          
-          const productos = await getProductosBySubcategoria(selectedCategory.id);
+
+          const productos = await getProductosBySubcategoria(selectedSubcategoriaModal.id);
           setProductosPorSubcategoria(prev => ({
             ...prev,
-            [selectedCategory.id]: productos
+            [selectedSubcategoriaModal.id]: productos
           }));
-          
+
           // Desactivar skeleton
           setLoadingCategories(prev => {
             const newSet = new Set(prev);
-            newSet.delete(selectedCategory.id);
+            newSet.delete(selectedSubcategoriaModal.id);
             return newSet;
           });
         }
-        
+
       } catch (error) {
-        console.error('Error al actualizar orden en el servidor:', error);
-        showNotification('Error al actualizar el orden en el servidor', 'error');
+        console.error('Error al actualizar el orden:', error);
+        showNotification('Error al actualizar el orden de los productos', 'error');
         // Revertir cambios locales en caso de error
         setCategoryProducts(categoryProducts);
       } finally {
         setLoadingReorderProducts(false);
       }
-      
+
       // Log para desarrollo - mostrar el nuevo orden
       console.log('Nuevo orden de productos:', newProducts.map((product, index) => ({
         id: product.id,
@@ -467,7 +473,7 @@ export default function ProductosPage() {
     </div>
   );
 
-  const CategorySkeleton = () => (
+  const SubcategoriaSkeleton = () => (
     <div className="bg-white rounded-xl border border-gray-100 p-6">
       <div className="mb-4">
         <div className="h-6 bg-gray-200 rounded animate-pulse w-48 mb-2"></div>
@@ -490,7 +496,7 @@ export default function ProductosPage() {
             <div>
               <h1 className="text-3xl font-light text-gray-900">Productos</h1>
             </div>
-            <button 
+            <button
               onClick={handleCreateProduct}
               className="bg-[#0E592F] text-white px-3 py-3 rounded-lg hover:bg-[#0B4A27] transition-colors font-medium flex items-center"
             >
@@ -505,149 +511,149 @@ export default function ProductosPage() {
         {loading ? (
           <div className="space-y-8">
             {[...Array(3)].map((_, i) => (
-              <CategorySkeleton key={i} />
+              <SubcategoriaSkeleton key={i} />
             ))}
           </div>
         ) : (
           /* Productos por subcategoría con carga progresiva */
           <div className="space-y-8">
             {subcategorias.map((subcategoria) => (
-            <div key={subcategoria.id} className="bg-white rounded-xl border border-gray-100 p-6">
-              {/* Título de la subcategoría */}
-              <div className="mb-4">
-                <div className="flex items-center space-x-3">
-                  <h2 className="text-xl font-medium text-gray-900">{subcategoria.nombre}</h2>
-                  <button
-                    onClick={() => openPositionModal(subcategoria)}
-                    className="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm flex items-center space-x-1"
-                  >
-                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                    <span>Posición</span>
-                  </button>
+              <div key={subcategoria.id} className="bg-white rounded-xl border border-gray-100 p-6">
+                {/* Título de la subcategoría */}
+                <div className="mb-4">
+                  <div className="flex items-center space-x-3">
+                    <h2 className="text-xl font-medium text-gray-900">{subcategoria.nombre}</h2>
+                    <button
+                      onClick={() => openPositionModal(subcategoria)}
+                      className="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm flex items-center space-x-1"
+                    >
+                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                      <span>Posición</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* Productos con scroll horizontal */}
-              <div className="overflow-x-auto scrollbar-hide">
-                <div className="flex space-x-4 pb-4">
-                  {loadingCategories.has(subcategoria.id) ? (
-                    [...Array(4)].map((_, i) => (
-                      <ProductSkeleton key={i} />
-                    ))
-                  ) : categoriesLoaded.has(subcategoria.id) && productosPorSubcategoria[subcategoria.id]?.length > 0 ? (
-                    productosPorSubcategoria[subcategoria.id].map((product) => (
-                      <div key={product.id} className="flex-none w-48">
-                        <div 
-                          className="overflow-hidden rounded-2xl bg-white border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
-                          onClick={() => handleEditProduct(product)}
-                        >
-                          {/* Imagen del producto */}
-                          <div className="h-40 w-full relative">
-                            {product.imagenUrl ? (
-                              <div className={`h-40 w-full relative ${!product.activo ? 'grayscale' : ''}`}>
-                                <Image
-                                  src={product.imagenUrl}
-                                  alt={product.nombre}
-                                  fill
-                                  className="object-cover"
-                                  loading="lazy"
-                                  placeholder="blur"
-                                  blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                                />
-                                {!product.activo && (
-                                  <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
-                                    <span className="text-white text-xs font-medium bg-black bg-opacity-50 px-2 py-1 rounded">
-                                      INACTIVO
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div className={`h-40 w-full p-14 flex items-center justify-center bg-gray-50 ${!product.activo ? 'opacity-50' : ''}`}>
-                                <Image
-                                  src="/Logo.png"
-                                  alt="Logo"
-                                  width={80}
-                                  height={80}
-                                  className=" opacity-40"
-                                  style={{ height: "auto", width: "auto" }}
-                                  priority
-                                />
-                                {!product.activo && (
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-gray-500 text-xs font-medium bg-white bg-opacity-80 px-2 py-1 rounded">
-                                      INACTIVO
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                {/* Productos con scroll horizontal */}
+                <div className="overflow-x-auto scrollbar-hide">
+                  <div className="flex space-x-4 pb-4">
+                    {loadingCategories.has(subcategoria.id) ? (
+                      [...Array(4)].map((_, i) => (
+                        <ProductSkeleton key={i} />
+                      ))
+                    ) : categoriesLoaded.has(subcategoria.id) && productosPorSubcategoria[subcategoria.id]?.length > 0 ? (
+                      productosPorSubcategoria[subcategoria.id].map((product) => (
+                        <div key={product.id} className="flex-none w-48">
+                          <div
+                            className="overflow-hidden rounded-2xl bg-white border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() => handleEditProduct(product)}
+                          >
+                            {/* Imagen del producto */}
+                            <div className="h-40 w-full relative">
+                              {product.imagenUrl ? (
+                                <div className={`h-40 w-full relative ${!product.activo ? 'grayscale' : ''}`}>
+                                  <Image
+                                    src={product.imagenUrl}
+                                    alt={product.nombre}
+                                    fill
+                                    className="object-cover"
+                                    loading="lazy"
+                                    placeholder="blur"
+                                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                                  />
+                                  {!product.activo && (
+                                    <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
+                                      <span className="text-white text-xs font-medium bg-black bg-opacity-50 px-2 py-1 rounded">
+                                        INACTIVO
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className={`h-40 w-full p-14 flex items-center justify-center bg-gray-50 ${!product.activo ? 'opacity-50' : ''}`}>
+                                  <Image
+                                    src="/Logo.png"
+                                    alt="Logo"
+                                    width={80}
+                                    height={80}
+                                    className=" opacity-40"
+                                    style={{ height: "auto", width: "auto" }}
+                                    priority
+                                  />
+                                  {!product.activo && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <span className="text-gray-500 text-xs font-medium bg-white bg-opacity-80 px-2 py-1 rounded">
+                                        INACTIVO
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
 
-                          {/* Información del producto */}
-                          <div className="p-3">
-                            <h3 className={`mb-1 text-base font-semibold line-clamp-2 ${!product.activo ? 'text-gray-500' : 'text-black'}`}>
-                              {product.nombre}
-                            </h3>
-                            <div className="flex items-center justify-between">
-                              <span className={`text-lg font-bold ${!product.activo ? 'text-gray-400' : 'text-gray-700'}`}>
-                                ${product.precio}
-                              </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditProduct(product);
-                                }}
-                                className="ml-2 p-1 text-gray-400 hover:text-[#0E592F] transition-colors"
-                              >
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button>
+                            {/* Información del producto */}
+                            <div className="p-3">
+                              <h3 className={`mb-1 text-base font-semibold line-clamp-2 ${!product.activo ? 'text-gray-500' : 'text-black'}`}>
+                                {product.nombre}
+                              </h3>
+                              <div className="flex items-center justify-between">
+                                <span className={`text-lg font-bold ${!product.activo ? 'text-gray-400' : 'text-gray-700'}`}>
+                                  ${product.precio}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditProduct(product);
+                                  }}
+                                  className="ml-2 p-1 text-gray-400 hover:text-[#0E592F] transition-colors"
+                                >
+                                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
+                      ))
+                    ) : categoriesLoaded.has(subcategoria.id) ? (
+                      <div className="flex-none w-full text-center py-8">
+                        <p className="text-gray-500">No hay productos en esta subcategoría</p>
                       </div>
-                    ))
-                  ) : categoriesLoaded.has(subcategoria.id) ? (
-                    <div className="flex-none w-full text-center py-8">
-                      <p className="text-gray-500">No hay productos en esta categoría</p>
-                    </div>
-                  ) : (
-                    // Mostrar skeleton mientras no se ha cargado
-                    [...Array(4)].map((_, i) => (
-                      <ProductSkeleton key={i} />
-                    ))
-                  )}
+                    ) : (
+                      // Mostrar skeleton mientras no se ha cargado
+                      [...Array(4)].map((_, i) => (
+                        <ProductSkeleton key={i} />
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Contador de productos */}
+                <div className="mt-3 text-right">
+                  <span className="text-sm text-gray-500">
+                    {loadingCategories.has(subcategoria.id) ? (
+                      <span className="animate-pulse">Cargando...</span>
+                    ) : (
+                      `${productosPorSubcategoria[subcategoria.id]?.length || 0} productos`
+                    )}
+                  </span>
                 </div>
               </div>
-
-              {/* Contador de productos */}
-              <div className="mt-3 text-right">
-                <span className="text-sm text-gray-500">
-                  {loadingCategories.has(subcategoria.id) ? (
-                    <span className="animate-pulse">Cargando...</span>
-                  ) : (
-                    `${productosPorSubcategoria[subcategoria.id]?.length || 0} productos`
-                  )}
-                </span>
-              </div>
-            </div>
-          ))}
+            ))}
           </div>
         )}
       </div>
 
       {/* Modal con formulario */}
-      <Modal 
-        isOpen={isModalOpen} 
+      <Modal
+        isOpen={isModalOpen}
         onClose={closeModal}
         title={
           modalMode === 'create' ? 'Crear Nuevo Producto' :
-          modalMode === 'edit' ? 'Editar Producto' :
-          'Detalles del Producto'
+            modalMode === 'edit' ? 'Editar Producto' :
+              'Detalles del Producto'
         }
       >
         {modalMode === 'create' || modalMode === 'edit' ? (
@@ -669,11 +675,10 @@ export default function ProductosPage() {
 
       {/* Notification */}
       {notification.show && (
-        <div className={`fixed top-4 right-4 z-[9999] px-6 py-3 rounded-lg shadow-lg transition-all duration-300 ${
-          notification.type === 'success' 
-            ? 'bg-green-600 text-white' 
-            : 'bg-red-600 text-white'
-        }`}>
+        <div className={`fixed top-4 right-4 z-[9999] px-6 py-3 rounded-lg shadow-lg transition-all duration-300 ${notification.type === 'success'
+          ? 'bg-green-600 text-white'
+          : 'bg-red-600 text-white'
+          }`}>
           <div className="flex items-center space-x-2">
             {notification.type === 'success' ? (
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -702,10 +707,10 @@ export default function ProductosPage() {
       />
 
       {/* Modal de posición de productos */}
-      <Modal 
-        isOpen={isPositionModalOpen} 
+      <Modal
+        isOpen={isPositionModalOpen}
         onClose={closePositionModal}
-        title={`Posición de productos - ${selectedCategory?.nombre || ''}`}
+        title={`Posición de productos - ${selectedSubcategoriaModal?.nombre || ''}`}
       >
         <div className="space-y-4">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -775,7 +780,7 @@ export default function ProductosPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
               <h3 className="mt-2 text-sm font-medium text-gray-900">No hay productos</h3>
-              <p className="mt-1 text-sm text-gray-500">Esta categoría no tiene productos para reordenar.</p>
+              <p className="mt-1 text-sm text-gray-500">Esta subcategoría no tiene productos para reordenar.</p>
             </div>
           )}
         </div>

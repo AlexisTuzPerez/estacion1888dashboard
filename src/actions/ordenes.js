@@ -181,3 +181,27 @@ export async function actualizarEstadoOrden(ordenId, nuevoStatus) {
         throw error;
     }
 }
+
+/**
+ * Obtiene los datos necesarios para realizar el corte de caja de un día específico
+ * Aprovecha el endpoint de historial con parámetros optimizados
+ * @param {string} fecha - Fecha en formato YYYY-MM-DD
+ * @returns {Promise<Object>} - Datos del historial filtrados para el corte
+ */
+export async function getCorteCajaData(fecha) {
+    try {
+        // Obtenemos un límite alto para asegurar que traemos todas las órdenes del día
+        // Si hay más de 500 órdenes en un día, se necesitaría paginación adicional o reporte de backend
+        const params = {
+            fecha,
+            limit: 500,
+            sort: 'fechaCreacion',
+            order: 'asc'
+        };
+
+        return await getHistorialOrdenes(params);
+    } catch (error) {
+        console.error(`Error al obtener datos para el corte de caja del ${fecha}:`, error);
+        throw error;
+    }
+}

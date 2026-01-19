@@ -2,133 +2,126 @@
 import { useEffect, useState } from 'react';
 
 export default function CategoriaForm({ categoria = null, onSave, onCancel, onDelete }) {
-  const [formData, setFormData] = useState({
-    nombre: '',
-    sucursales: [],
-    productos: [],
-    modificadores: []
-  });
+    const [formData, setFormData] = useState({
+        nombre: '',
+    });
 
-  const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (categoria) {
-      setFormData({
-        nombre: categoria.nombre || '',
-        sucursales: categoria.sucursales || [],
-        productos: categoria.productos || [],
-        modificadores: categoria.modificadores || []
-      });
-    }
-  }, [categoria]);
+    useEffect(() => {
+        if (categoria) {
+            setFormData({
+                nombre: categoria.nombre || '',
+            });
+        }
+    }, [categoria]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
 
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
 
-  const validateForm = () => {
-    const newErrors = {};
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: ''
+            }));
+        }
+    };
 
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'El nombre de la categoría es requerido';
-    }
+    const validateForm = () => {
+        const newErrors = {};
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+        if (!formData.nombre.trim()) {
+            newErrors.nombre = 'El nombre de la categoría es requerido';
+        }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
-    setIsSubmitting(true);
-    
-    try {
-      const categoriaData = {
-        nombre: formData.nombre
-      };
+    const handleSubmit = async (e) => {
+        e.preventDefault();
 
-      await onSave(categoriaData);
-    } catch (error) {
-      console.error('Error al guardar categoría:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+        if (!validateForm()) {
+            return;
+        }
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Nombre de la categoría */}
-      <div>
-        <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 mb-2">
-          Nombre de la Categoría *
-        </label>
-        <input
-          type="text"
-          id="nombre"
-          name="nombre"
-          value={formData.nombre}
-          onChange={handleInputChange}
-          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E592F] focus:border-transparent ${
-            errors.nombre ? 'border-red-500' : 'border-gray-300'
-          }`}
-          placeholder="BEBIDAS, HAMBURGUESAS, PIZZAS, etc."
-        />
-        {errors.nombre && (
-          <p className="mt-1 text-sm text-red-600">{errors.nombre}</p>
-        )}
-      </div>
+        setIsSubmitting(true);
 
-      {/* Botones de acción */}
-      <div className="flex justify-between pt-6 border-t border-gray-200">
-        {/* Botón de eliminar (solo en modo edición) */}
-        {categoria && onDelete && (
-          <button
-            type="button"
-            onClick={() => onDelete(categoria.id)}
-            className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors flex items-center space-x-2"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            <span>Eliminar</span>
-          </button>
-        )}
-        
-        {/* Botones de la derecha */}
-        <div className="flex space-x-3 ml-auto">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E592F] transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-white bg-[#0E592F] border border-transparent rounded-lg hover:bg-[#0B4A27] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E592F] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isSubmitting ? 'Guardando...' : (categoria ? 'Actualizar' : 'Crear')}
-          </button>
-        </div>
-      </div>
-    </form>
-  );
+        try {
+            const categoriaData = {
+                nombre: formData.nombre
+            };
+
+            await onSave(categoriaData);
+        } catch (error) {
+            console.error('Error al guardar categoría:', error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Nombre de la categoría */}
+            <div>
+                <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 mb-2">
+                    Nombre de la Categoría *
+                </label>
+                <input
+                    type="text"
+                    id="nombre"
+                    name="nombre"
+                    value={formData.nombre}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E592F] focus:border-transparent ${errors.nombre ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                    placeholder="BEBIDAS, ALIMENTOS, EXTRAS, etc."
+                />
+                {errors.nombre && (
+                    <p className="mt-1 text-sm text-red-600">{errors.nombre}</p>
+                )}
+            </div>
+
+            {/* Botones de acción */}
+            <div className="flex justify-between pt-6 border-t border-gray-200">
+                {/* Botón de eliminar (solo en modo edición) */}
+                {categoria && onDelete && (
+                    <button
+                        type="button"
+                        onClick={() => onDelete(categoria.id)}
+                        className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors flex items-center space-x-2"
+                    >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        <span>Eliminar</span>
+                    </button>
+                )}
+
+                {/* Botones de la derecha */}
+                <div className="flex space-x-3 ml-auto">
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E592F] transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="px-4 py-2 text-sm font-medium text-white bg-[#0E592F] border border-transparent rounded-lg hover:bg-[#0B4A27] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E592F] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        {isSubmitting ? 'Guardando...' : (categoria ? 'Actualizar' : 'Crear')}
+                    </button>
+                </div>
+            </div>
+        </form>
+    );
 }

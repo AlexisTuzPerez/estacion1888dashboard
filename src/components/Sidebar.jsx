@@ -13,7 +13,7 @@ export default function Sidebar() {
     <aside className="bg-white border-r border-gray-200 w-64 fixed left-0 top-16 bottom-0 overflow-y-auto">
       <nav className="p-4 space-y-2">
         {/* Home */}
-        <Link 
+        <Link
           href="/"
           className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/')}`}
         >
@@ -23,7 +23,7 @@ export default function Sidebar() {
           Inicio
         </Link>
         {/* Órdenes */}
-        <Link 
+        <Link
           href="/ordenes"
           className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/ordenes')}`}
         >
@@ -33,26 +33,37 @@ export default function Sidebar() {
           Órdenes
         </Link>
 
-          {/* Historial de Órdenes */}
-          <Link 
-            href="/historial-ordenes"
-            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/historial-ordenes')}`}
-          >
-            <svg className="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" fill="none" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6l4 2" />
-            </svg>
-            Historial de Órdenes
-          </Link>
+        {/* Historial de Órdenes */}
+        <Link
+          href="/historial-ordenes"
+          className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/historial-ordenes')}`}
+        >
+          <svg className="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" fill="none" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6l4 2" />
+          </svg>
+          Historial de Órdenes
+        </Link>
+
+        {/* Corte de Caja */}
+        <Link
+          href="/cortes"
+          className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/cortes')}`}
+        >
+          <svg className="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          Corte de Caja
+        </Link>
 
         {/* Sección Elementos */}
         <div className="pt-2">
           <h3 className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide">
             Elementos
           </h3>
-          
+
           {/* Productos */}
-          <Link 
+          <Link
             href="/productos"
             className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/productos')}`}
           >
@@ -63,7 +74,7 @@ export default function Sidebar() {
           </Link>
 
           {/* Modificadores */}
-          <Link 
+          <Link
             href="/modificadores"
             className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/modificadores')}`}
           >
@@ -74,7 +85,7 @@ export default function Sidebar() {
           </Link>
 
           {/* Tipos de Modificador */}
-          <Link 
+          <Link
             href="/tipos-modificador"
             className={`flex items-center px-8 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/tipos-modificador')}`}
           >
@@ -84,8 +95,30 @@ export default function Sidebar() {
             Tipos de Modificador
           </Link>
 
+          {/* Categorías */}
+          <Link
+            href="/categorias"
+            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/categorias')}`}
+          >
+            <svg className="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            Categorías
+          </Link>
+
+          {/* Subcategorías */}
+          <Link
+            href="/subcategoria"
+            className={`flex items-center px-8 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/subcategoria')}`}
+          >
+            <svg className="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            Subcategorías
+          </Link>
+
           {/* Tamaños */}
-          <Link 
+          <Link
             href="/tamanos"
             className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/tamanos')}`}
           >
@@ -95,19 +128,8 @@ export default function Sidebar() {
             Tamaños
           </Link>
 
-          {/* Categoría */}
-          <Link 
-            href="/categoria"
-            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/categoria')}`}
-          >
-            <svg className="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-            Categoría
-          </Link>
-
           {/* Mesas */}
-          <Link 
+          <Link
             href="/mesas"
             className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/mesas')}`}
           >

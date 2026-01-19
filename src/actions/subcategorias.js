@@ -2,7 +2,7 @@ const API_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
 
 
-export async function getCategorias() {
+export async function getSubcategorias() {
     try {
         const response = await fetch(`${API_URL}/subcategorias`, {
             method: 'GET',
@@ -10,13 +10,13 @@ export async function getCategorias() {
         });
         return response.json();
     } catch (error) {
-        console.error('Error al obtener categorías:', error);
+        console.error('Error al obtener subcategorías:', error);
         throw error;
     }
 }
 
 
-export async function getCategoriaById(id) {
+export async function getSubcategoriaById(id) {
     try {
         const response = await fetch(`${API_URL}/subcategorias/${id}`, {
             method: 'GET',
@@ -25,12 +25,12 @@ export async function getCategoriaById(id) {
         return response.json();
     }
     catch (error) {
-        console.error('Error al obtener categoría por id:', error);
+        console.error('Error al obtener subcategoría por id:', error);
         throw error;
     }
 }
 
-export async function postCategoria(categoria) {
+export async function postSubcategoria(subcategoria) {
     try {
         const response = await fetch(`${API_URL}/subcategorias`, {
             method: 'POST',
@@ -38,16 +38,16 @@ export async function postCategoria(categoria) {
                 'Content-Type': 'application/json',
             },
             credentials: 'include',
-            body: JSON.stringify(categoria),
+            body: JSON.stringify(subcategoria),
         });
         return response.json();
     } catch (error) {
-        console.error('Error al crear categoría:', error);
+        console.error('Error al crear subcategoría:', error);
         throw error;
     }
 }
 
-export async function updateCategoria(id, categoria) {
+export async function updateSubcategoria(id, subcategoria) {
     try {
         const response = await fetch(`${API_URL}/subcategorias/${id}`, {
             method: 'PUT',
@@ -55,31 +55,31 @@ export async function updateCategoria(id, categoria) {
                 'Content-Type': 'application/json',
             },
             credentials: 'include',
-            body: JSON.stringify(categoria),
+            body: JSON.stringify(subcategoria),
         });
         return response.json();
     } catch (error) {
-        console.error('Error al actualizar categoría:', error);
+        console.error('Error al actualizar subcategoría:', error);
         throw error;
     }
 }
 
-export async function deleteCategoria(id) {
+export async function deleteSubcategoria(id) {
     try {
         await fetch(`${API_URL}/subcategorias/${id}`, {
             method: 'DELETE',
             credentials: 'include',
         });
-        return 
+        return
     } catch (error) {
-        console.error('Error al eliminar categoría:', error);
+        console.error('Error al eliminar subcategoría:', error);
         throw error;
     }
 }
 
-// TODO: Implementar endpoint en el backend para actualizar el orden de categorías
+// TODO: Implementar endpoint en el backend para actualizar el orden de subcategorías
 // Esta función está lista para cuando se implemente el endpoint /subcategorias/reorder
-export async function updateCategoriaOrder(ordenData) {
+export async function updateSubcategoriaOrder(ordenData) {
     try {
         const response = await fetch(`${API_URL}/subcategorias/reorder`, {
             method: 'PUT',
@@ -92,14 +92,14 @@ export async function updateCategoriaOrder(ordenData) {
                 posicion: item.posicion
             }))),
         });
-        
+
         if (!response.ok) {
-            throw new Error('Error al actualizar el orden de las categorías');
+            throw new Error('Error al actualizar el orden de las subcategorías');
         }
-        
+
         return response.json();
     } catch (error) {
-        console.error('Error al actualizar el orden de categorías:', error);
+        console.error('Error al actualizar el orden de subcategorías:', error);
         throw error;
     }
 }

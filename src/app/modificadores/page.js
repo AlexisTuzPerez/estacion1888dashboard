@@ -16,8 +16,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useCallback, useEffect, useState } from 'react';
-import { getCategorias } from '../../actions/categoria';
 import { deleteModificador, getModificadores, postModificador, updateModificador, updateModificadorOrder } from '../../actions/modificadores';
+import { getSubcategorias } from '../../actions/subcategorias';
 import { getTiposModificador } from '../../actions/tiposModificador';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import DashboardLayout from '../../components/DashboardLayout';
@@ -43,16 +43,15 @@ function SortableItem({ modificador, index, onEdit, totalItems, subcategorias, l
   };
 
   // Manejar tanto subcategorias (array) como subcategoriaId (singular) para compatibilidad
-  const modificadorSubcategorias = modificador.subcategorias || 
+  const modificadorSubcategorias = modificador.subcategorias ||
     (modificador.subcategoriaId ? [{ id: modificador.subcategoriaId }] : []);
 
   return (
-    <tr 
+    <tr
       ref={setNodeRef}
       style={style}
-      className={`hover:bg-green-50 transition-colors cursor-pointer ${
-        index !== totalItems - 1 ? 'border-b border-gray-50' : ''
-      } ${isDragging ? 'z-50' : ''}`}
+      className={`hover:bg-green-50 transition-colors cursor-pointer ${index !== totalItems - 1 ? 'border-b border-gray-50' : ''
+        } ${isDragging ? 'z-50' : ''}`}
       onClick={() => onEdit(modificador)}
     >
       {/* Columna Posición con handle de drag and drop */}
@@ -89,11 +88,10 @@ function SortableItem({ modificador, index, onEdit, totalItems, subcategorias, l
       </td>
       {/* Precio */}
       <td className="px-6 py-4 text-sm">
-        <span className={`font-medium ${
-          modificador.precio === 0 
-            ? 'text-[#16A34A]' 
-            : 'text-gray-900'
-        }`}>
+        <span className={`font-medium ${modificador.precio === 0
+          ? 'text-[#16A34A]'
+          : 'text-gray-900'
+          }`}>
           {modificador.precio === 0 ? 'Gratis' : `$${modificador.precio}`}
         </span>
       </td>
@@ -105,7 +103,7 @@ function SortableItem({ modificador, index, onEdit, totalItems, subcategorias, l
             modificadorSubcategorias.map((subcategoriaData) => {
               const subcategoria = subcategorias.find(sub => sub.id === subcategoriaData.id);
               return (
-                <span 
+                <span
                   key={subcategoriaData.id}
                   className="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-[#0E592F]"
                 >
@@ -123,7 +121,7 @@ function SortableItem({ modificador, index, onEdit, totalItems, subcategorias, l
       {/* Acciones */}
       <td className="px-6 py-4">
         <div className="flex justify-end">
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onEdit(modificador);
@@ -224,16 +222,16 @@ function ModificadoresTableByType({ tipo, modificadores, onEdit, subcategorias, 
 
 export default function ModificadoresPage() {
   const { checkTokenExpiry } = useAuth();
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedModificador, setSelectedModificador] = useState(null);
   const [modalMode, setModalMode] = useState('view'); // 'view', 'create', 'edit'
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
-  const [confirmationModal, setConfirmationModal] = useState({ 
-    isOpen: false, 
-    title: '', 
-    message: '', 
-    onConfirm: null 
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null
   });
   const [modificadores, setModificadores] = useState([]);
   const [subcategorias, setSubcategorias] = useState([]);
@@ -262,7 +260,7 @@ export default function ModificadoresPage() {
       setLoading(true);
       const [modificadoresData, subcategoriasData, tiposModificadorData] = await Promise.all([
         getModificadores(),
-        getCategorias(),
+        getSubcategorias(),
         getTiposModificador()
       ]);
       setModificadores(modificadoresData);
@@ -279,7 +277,7 @@ export default function ModificadoresPage() {
   // Función para agrupar modificadores por tipo
   const groupModificadoresByType = useCallback(() => {
     const grouped = {};
-    
+
     // Inicializar grupos para todos los tipos de modificador
     tiposModificador.forEach(tipo => {
       grouped[tipo.id] = {
@@ -287,7 +285,7 @@ export default function ModificadoresPage() {
         modificadores: []
       };
     });
-    
+
     // Agrupar modificadores por tipo
     modificadores.forEach(modificador => {
       const tipoId = modificador.tipoModificador?.id;
@@ -295,7 +293,7 @@ export default function ModificadoresPage() {
         grouped[tipoId].modificadores.push(modificador);
       }
     });
-    
+
     // Filtrar solo los grupos que tienen modificadores
     return Object.values(grouped).filter(group => group.modificadores.length > 0);
   }, [modificadores, tiposModificador]);
@@ -340,11 +338,11 @@ export default function ModificadoresPage() {
         await postModificador(modificadorData);
         showNotification('Modificador creado exitosamente', 'success');
       }
-      
+
       closeModal();
-      
+
       fetchData();
-      
+
     } catch (error) {
       console.error('Error al guardar modificador:', error);
       const errorMessage = error.message || 'Error al guardar el modificador';
@@ -367,21 +365,21 @@ export default function ModificadoresPage() {
     try {
       const result = await deleteModificador(modificadorId);
       showNotification('Modificador eliminado exitosamente', 'success');
-      
+
       closeModal();
-      
+
       fetchData();
-      
+
     } catch (error) {
       console.error('Error al eliminar modificador:', error);
       let errorMessage = 'Error al eliminar el modificador';
-      
+
       if (error.message) {
         errorMessage = error.message;
       } else if (error.response) {
         errorMessage = `Error del servidor: ${error.response.status}`;
       }
-      
+
       showNotification(errorMessage, 'error');
     }
   };
@@ -398,9 +396,9 @@ export default function ModificadoresPage() {
       // Encontrar el modificador activo y su tipo
       const activeModificador = modificadores.find(m => m.id === active.id);
       const overModificador = modificadores.find(m => m.id === over.id);
-      
+
       if (!activeModificador || !overModificador) return;
-      
+
       // Solo permitir reordenamiento dentro del mismo tipo
       if (activeModificador.tipoModificador?.id !== overModificador.tipoModificador?.id) {
         showNotification('Solo puedes reordenar modificadores del mismo tipo', 'error');
@@ -411,13 +409,13 @@ export default function ModificadoresPage() {
       const tipoId = activeModificador.tipoModificador.id;
       const modificadoresDelTipo = modificadores.filter(m => m.tipoModificador?.id === tipoId);
       const otrosModificadores = modificadores.filter(m => m.tipoModificador?.id !== tipoId);
-      
+
       // Reordenar dentro del tipo
       const oldIndex = modificadoresDelTipo.findIndex((modificador) => modificador.id === active.id);
       const newIndex = modificadoresDelTipo.findIndex((modificador) => modificador.id === over.id);
-      
+
       const reorderedModificadoresDelTipo = arrayMove(modificadoresDelTipo, oldIndex, newIndex);
-      
+
       // Combinar con los otros modificadores
       const newModificadores = [...otrosModificadores, ...reorderedModificadoresDelTipo];
       setModificadores(newModificadores);
@@ -429,7 +427,7 @@ export default function ModificadoresPage() {
           id: modificador.id,
           posicion: index + 1
         }));
-        
+
         await updateModificadorOrder(newOrder);
         showNotification(`Orden de modificadores "${activeModificador.tipoModificador.nombre}" actualizado correctamente`, 'success');
       } catch (error) {
@@ -440,7 +438,7 @@ export default function ModificadoresPage() {
       } finally {
         setLoadingReorder(false);
       }
-      
+
       // Log para desarrollo - mostrar el nuevo orden
       console.log(`Nuevo orden de modificadores tipo "${activeModificador.tipoModificador.nombre}":`, reorderedModificadoresDelTipo.map((modificador, index) => ({
         id: modificador.id,
@@ -459,7 +457,7 @@ export default function ModificadoresPage() {
             <div>
               <h1 className="text-3xl font-light text-gray-900">Modificadores</h1>
             </div>
-            <button 
+            <button
               onClick={handleCreateModificador}
               className="bg-[#0E592F] text-white px-3 mr-1 py-3 rounded-lg hover:bg-[#0B4A27] transition-colors font-medium flex items-center"
             >
@@ -499,7 +497,7 @@ export default function ModificadoresPage() {
                 loadingReorder={loadingReorder}
               />
             ))}
-            
+
             {/* Mensaje si no hay modificadores */}
             {groupModificadoresByType().length === 0 && (
               <div className="text-center py-12">
@@ -544,13 +542,13 @@ export default function ModificadoresPage() {
       </div>
 
       {/* Modal con formulario */}
-      <Modal 
-        isOpen={isModalOpen} 
+      <Modal
+        isOpen={isModalOpen}
         onClose={closeModal}
         title={
           modalMode === 'create' ? 'Crear Nuevo Modificador' :
-          modalMode === 'edit' ? 'Editar Modificador' :
-          'Detalles del Modificador'
+            modalMode === 'edit' ? 'Editar Modificador' :
+              'Detalles del Modificador'
         }
       >
         {modalMode === 'create' || modalMode === 'edit' ? (
@@ -572,11 +570,10 @@ export default function ModificadoresPage() {
 
       {/* Notification */}
       {notification.show && (
-        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transition-all duration-300 ${
-          notification.type === 'success' 
-            ? 'bg-green-600 text-white' 
-            : 'bg-red-600 text-white'
-        }`}>
+        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transition-all duration-300 ${notification.type === 'success'
+          ? 'bg-green-600 text-white'
+          : 'bg-red-600 text-white'
+          }`}>
           <div className="flex items-center space-x-2">
             {notification.type === 'success' ? (
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
