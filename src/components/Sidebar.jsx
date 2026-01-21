@@ -138,6 +138,17 @@ export default function Sidebar() {
             </svg>
             Mesas
           </Link>
+
+          {/* Descuentos */}
+          <Link
+            href="/descuentos"
+            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${isActive('/descuentos')}`}
+          >
+            <svg className="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+            </svg>
+            Descuentos
+          </Link>
         </div>
       </nav>
     </aside>
