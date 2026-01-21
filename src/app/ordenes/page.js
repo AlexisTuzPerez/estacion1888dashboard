@@ -749,6 +749,30 @@ export default function OrdenesPage() {
                             )}
                         </div>
 
+                        {/* Descuentos Aplicados */}
+                        {selectedOrden.descuentos && selectedOrden.descuentos.length > 0 && (
+                            <div className="mt-6 border border-gray-100 rounded-lg p-4">
+                                <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center">
+                                    <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                    </svg>
+                                    Descuentos Aplicados
+                                </h4>
+                                <div className="space-y-2">
+                                    {selectedOrden.descuentos.map((desc, index) => (
+                                        <div key={index} className="flex justify-between text-sm">
+                                            <span className="text-gray-600">{desc.nombre}</span>
+                                            <span className="font-medium text-gray-900">-${Number(desc.monto).toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                    <div className="pt-2 mt-2 border-t border-gray-100 flex justify-between text-sm font-medium text-gray-900">
+                                        <span>Ahorro Total</span>
+                                        <span>-${selectedOrden.descuentos.reduce((sum, item) => sum + Number(item.monto), 0).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Total destacado */}
                         <div className="bg-gray-50 rounded-lg p-4 mt-6">
                             <div className="flex items-center justify-between">
