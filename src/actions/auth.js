@@ -17,9 +17,15 @@ export async function login(email, password) {
         let userInfo;
         try {
             userInfo = JSON.parse(responseText);
-            if (!userInfo || userInfo.user.id !== 152) {
+            /*  if (!userInfo || userInfo.user.id !== 152) {
+                 return { error: 'Error: Usuario no autorizado para acceder a este dashboard' };
+             } */
+
+            if (!userInfo) {
                 return { error: 'Error: Usuario no autorizado para acceder a este dashboard' };
             }
+
+
             return userInfo;
         } catch {
             return { success: true, message: responseText };
